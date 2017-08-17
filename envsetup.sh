@@ -204,6 +204,13 @@ function check_product()
         echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
         return
     fi
+    if (echo -n $1 | grep -q -e "^yaap_") ; then
+        YAAP_BUILD=$(echo -n $1 | sed -e 's/^yaap_//g')
+    else
+        YAAP_BUILD=
+    fi
+    export YAAP_BUILD
+
         TARGET_PRODUCT=$1 \
         TARGET_RELEASE= \
         TARGET_BUILD_VARIANT= \
@@ -837,6 +844,8 @@ function lunch()
     export TARGET_BUILD_TYPE=release
 
     [[ -n "${ANDROID_QUIET_BUILD:-}" ]] || echo
+
+    fixup_common_out_dir
 
     set_stuff_for_environment
     [[ -n "${ANDROID_QUIET_BUILD:-}" ]] || printconfig
