@@ -19,7 +19,6 @@
 PRODUCT_CFI_INCLUDE_PATHS :=  \
     device/google/cuttlefish/guest/libs/wpa_supplicant_8_lib \
     hardware/qcom-caf/wlan/qcwcn/wpa_supplicant_8_lib \
-    device/google/wahoo/wifi_offload \
     external/tinyxml2 \
     external/wpa_supplicant_8 \
     frameworks/av/camera \
