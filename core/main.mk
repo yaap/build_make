@@ -1111,7 +1111,7 @@ $(if $(strip $(1)), \
   $(warning $(2)) \
   $(info Offending entries:) \
   $(foreach e,$(sort $(1)),$(info    $(patsubst $(PRODUCT_OUT)/%,%,$(e)))) \
-  $(error Build failed) \
+  $(warning Continuing build with offending entries!) \
 )
 endef
 
