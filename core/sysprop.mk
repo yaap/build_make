@@ -44,10 +44,10 @@ define generate-common-build-props
         echo "ro.product.$(1).name=$(PRODUCT_SYSTEM_NAME)" >> $(2);\
       ,\
         echo "ro.product.$(1).brand=$(PRODUCT_BRAND)" >> $(2);\
-        echo "ro.product.$(1).device=$${TARGET_DEVICE:-$(TARGET_DEVICE)}" >> $(2);\
+        echo "ro.product.$(1).device=$${PRODUCT_DEVICE:-$(TARGET_DEVICE)}" >> $(2);\
         echo "ro.product.$(1).manufacturer=$(PRODUCT_MANUFACTURER)" >> $(2);\
         echo "ro.product.$(1).model=$${PRODUCT_MODEL:-$(PRODUCT_MODEL)}" >> $(2);\
-        echo "ro.product.$(1).name=$${TARGET_PRODUCT:-$(TARGET_PRODUCT)}" >> $(2);\
+        echo "ro.product.$(1).name=$${PRODUCT_NAME:-$(TARGET_PRODUCT)}" >> $(2);\
     )\
     $(if $(filter system vendor odm,$(1)),\
         echo "ro.$(1).product.cpu.abilist=$(TARGET_CPU_ABI_LIST) " >> $(2);\
