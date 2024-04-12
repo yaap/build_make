@@ -155,6 +155,7 @@ $(call add_json_list, DeviceSystemSdkVersions,           $(BOARD_SYSTEMSDK_VERSI
 $(call add_json_str,  RecoverySnapshotVersion,           $(RECOVERY_SNAPSHOT_VERSION))
 $(call add_json_list, Platform_systemsdk_versions,       $(PLATFORM_SYSTEMSDK_VERSIONS))
 $(call add_json_bool, Malloc_use_scudo,                  $(filter true,$(PRODUCT_USE_SCUDO)))
+$(call add_json_bool, Malloc_use_mimalloc,                  $(filter true,$(PRODUCT_USE_MIMALLOC)))
 $(call add_json_bool, Malloc_not_svelte,                 $(call invert_bool,$(filter true,$(MALLOC_SVELTE))))
 $(call add_json_bool, Malloc_not_svelte_libc32,          $(if $(MALLOC_SVELTE_FOR_LIBC32),\
                                                             $(call invert_bool,$(filter true,$(MALLOC_SVELTE_FOR_LIBC32))),\
