@@ -278,6 +278,9 @@ _product_single_value_vars += PRODUCT_MEMTAG_HEAP_SKIP_DEFAULT_PATHS
 # Whether the Scudo hardened allocator is disabled platform-wide
 _product_single_value_vars += PRODUCT_USE_SCUDO
 
+# Whether the mimalloc allocator is disabled platform-wide
+_product_single_value_vars += PRODUCT_USE_MIMALLOC
+
 # List of extra VNDK versions to be included
 _product_list_vars += PRODUCT_EXTRA_VNDK_VERSIONS
 

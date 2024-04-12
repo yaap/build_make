@@ -326,6 +326,11 @@ ifneq ($(PRODUCT_USE_SCUDO),true)
   my_sanitize := $(filter-out scudo,$(my_sanitize))
 endif
 
+# If mimalloc is disabled globally
+ifneq ($(PRODUCT_USE_MIMALLOC),true)
+  my_sanitize := $(filter-out mimalloc,$(my_sanitize))
+endif
+
 # Undefined symbols can occur if a non-sanitized library links
 # sanitized static libraries. That's OK, because the executable
 # always depends on the ASan runtime library, which defines these
