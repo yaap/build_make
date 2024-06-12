@@ -46,7 +46,6 @@ PRODUCT_PACKAGES += \
     CertInstaller \
     CredentialManager \
     DeviceAsWebcam \
-    DeviceDiagnostics \
     DocumentsUI \
     DownloadProviderUi \
     EasterEgg \
