@@ -834,6 +834,21 @@ function lunch()
     release=$(grep "BUILD_ID" build/make/core/build_id.mk | tail -1 | cut -d '=' -f 2 | cut -d '.' -f 1 | tr '[:upper:]' '[:lower:]')
     export TARGET_RELEASE=$release
 
+    if ! TARGET_RELEASE="" check_product $product $release
+    then
+        # if we can't find a product, try to grab it off the YAAP GitHub
+        T=$(gettop)
+        cd $T > /dev/null
+        vendor/yaap/build/tools/roomservice.py $product
+        cd - > /dev/null
+        check_product $product $release
+    else
+        T=$(gettop)
+        cd $T > /dev/null
+        vendor/yaap/build/tools/roomservice.py $product true
+        cd - > /dev/null
+    fi
+
     TARGET_PRODUCT=$product \
     TARGET_BUILD_VARIANT=$variant \
     TARGET_RELEASE=$release \
@@ -851,21 +866,6 @@ function lunch()
     export TARGET_RELEASE=$release
     # Note this is the string "release", not the value of the variable.
     export TARGET_BUILD_TYPE=release
-
-    if ! check_product $product $release
-    then
-        # if we can't find a product, try to grab it off the LineageOS GitHub
-        T=$(gettop)
-        cd $T > /dev/null
-        vendor/yaap/build/tools/roomservice.py $product
-        cd - > /dev/null
-        check_product $product $release
-    else
-        T=$(gettop)
-        cd $T > /dev/null
-        vendor/yaap/build/tools/roomservice.py $product true
-        cd - > /dev/null
-    fi
 
     [[ -n "${ANDROID_QUIET_BUILD:-}" ]] || echo
 
