@@ -128,9 +128,7 @@ PRODUCT_SYSTEM_PROPERTIES += \
     pm.dexopt.secondary?=speed-profile \
     pm.dexopt.shared?=speed
 
-ifneq (,$(filter eng,$(TARGET_BUILD_VARIANT)))
-    OVERRIDE_DISABLE_DEXOPT_ALL ?= true
-endif
+OVERRIDE_DISABLE_DEXOPT_ALL ?= false
 
 # OVERRIDE_DISABLE_DEXOPT_ALL disables all dexpreopt (build-time) and dexopt (on-device) activities.
 # This option is for faster iteration during development and should never be enabled for production.
