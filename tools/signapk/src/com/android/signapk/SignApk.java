@@ -1149,13 +1149,13 @@ class SignApk {
             } else if ("--enable-v4".equals(args[argstart])) {
                 signUsingApkSignatureSchemeV4 = true;
                 ++argstart;
-            } else if ("--lineage".equals(args[argstart])) {
-                File lineageFile = new File(args[++argstart]);
+            } else if ("--yaap".equals(args[argstart])) {
+                File yaapFile = new File(args[++argstart]);
                 try {
-                    certLineage = SigningCertificateLineage.readFromFile(lineageFile);
+                    certLineage = SigningCertificateLineage.readFromFile(yaapFile);
                 } catch (Exception e) {
                     throw new IllegalArgumentException(
-                            "Error reading lineage file: " + e.getMessage());
+                            "Error reading yaap file: " + e.getMessage());
                 }
                 ++argstart;
             } else if ("--rotation-min-sdk-version".equals(args[argstart])) {

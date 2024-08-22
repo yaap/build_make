@@ -51,7 +51,7 @@ endif
 PRODUCT_SYSTEM_SERVER_JARS := \
     com.android.location.provider \
     services \
-    org.lineageos.platform
+    org.yaapos.platform
 
 PRODUCT_COPY_FILES += \
     system/core/rootdir/etc/public.libraries.android.txt:system/etc/public.libraries.txt
