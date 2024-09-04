@@ -50,25 +50,6 @@ endef
 # Release config
 include $(BUILD_SYSTEM)/release_config.mk
 
-# Set default value of KEEP_VNDK.
-ifeq ($(RELEASE_DEPRECATE_VNDK),true)
-  KEEP_VNDK ?= false
-else
-  KEEP_VNDK ?= true
-endif
-
-ifeq ($(KEEP_VNDK),true)
-  # Starting in Android U, non-VNDK devices not supported
-  # WARNING: DO NOT CHANGE: if you are downstream of AOSP, and you change this, without
-  # letting upstream know it's important to you, we may do cleanup which breaks this
-  # significantly. Please let us know if you are changing this.
-  ifndef BOARD_VNDK_VERSION
-  # READ WARNING - DO NOT CHANGE
-  BOARD_VNDK_VERSION := current
-  # READ WARNING - DO NOT CHANGE
-  endif
-endif
-
 # ---------------------------------------------------------------
 # Set up version information
 include $(BUILD_SYSTEM)/version_util.mk
@@ -94,7 +75,7 @@ CORRECT_BUILD_ENV_SEQUENCE_NUMBER := 13
 # ---------------------------------------------------------------
 # The product defaults to generic on hardware
 ifeq ($(TARGET_PRODUCT),)
-TARGET_PRODUCT := aosp_arm
+TARGET_PRODUCT := aosp_arm64
 endif
 
 
@@ -267,6 +248,7 @@ endif
 HOST_PREBUILT_ARCH := x86
 # This is the standard way to name a directory containing prebuilt host
 # objects. E.g., prebuilt/$(HOST_PREBUILT_TAG)/cc
+# This must match the logic in get_host_prebuilt_prefix in envsetup.sh
 HOST_PREBUILT_TAG := $(BUILD_OS)-$(HOST_PREBUILT_ARCH)
 
 # TARGET_COPY_OUT_* are all relative to the staging directory, ie PRODUCT_OUT.

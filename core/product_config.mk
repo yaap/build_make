@@ -280,27 +280,6 @@ endif
 
 current_product_makefile :=
 
-#############################################################################
-# Check product include tag allowlist
-BLUEPRINT_INCLUDE_TAGS_ALLOWLIST := \
-  com.android.mainline_go \
-  com.android.mainline \
-  mainline_module_prebuilt_nightly \
-  mainline_module_prebuilt_monthly_release
-.KATI_READONLY := BLUEPRINT_INCLUDE_TAGS_ALLOWLIST
-$(foreach include_tag,$(PRODUCT_INCLUDE_TAGS), \
-	$(if $(filter $(include_tag),$(BLUEPRINT_INCLUDE_TAGS_ALLOWLIST)),,\
-	$(call pretty-error, $(include_tag) is not in BLUEPRINT_INCLUDE_TAGS_ALLOWLIST: $(BLUEPRINT_INCLUDE_TAGS_ALLOWLIST))))
-# Create default PRODUCT_INCLUDE_TAGS
-ifeq (, $(PRODUCT_INCLUDE_TAGS))
-# Soong analysis is global: even though a module might not be relevant to a specific product (e.g. build_tools for aosp_arm),
-# we still analyse it.
-# This means that in setups where we two have two prebuilts of module_sdk, we need a "default" to use in analysis
-# This should be a no-op in aosp and internal since no Android.bp file contains blueprint_package_includes
-# Use the big android one and main-based prebuilts by default
-PRODUCT_INCLUDE_TAGS += com.android.mainline mainline_module_prebuilt_nightly
-endif
-
 # AOSP and Google products currently share the same `apex_contributions` in next.
 # This causes issues when building <aosp_product>-next-userdebug in main.
 # Create a temporary allowlist to ignore the google apexes listed in `contents` of apex_contributions of `next`
@@ -308,33 +287,22 @@ endif
 # TODO(b/308187268): Remove this denylist mechanism
 # Use PRODUCT_PACKAGES to determine if this is an aosp product. aosp products do not use google signed apexes.
 ignore_apex_contributions :=
-ifeq (,$(findstring com.google.android.conscrypt,$(PRODUCT_PACKAGES)))
+ifeq (,$(findstring com.google.android.conscrypt,$(PRODUCT_PACKAGES))$(findstring com.google.android.go.conscrypt,$(PRODUCT_PACKAGES)))
   ignore_apex_contributions := true
 endif
 ifeq (true,$(PRODUCT_MODULE_BUILD_FROM_SOURCE))
   ignore_apex_contributions := true
 endif
+ifneq ($(EMMA_INSTRUMENT)$(EMMA_INSTRUMENT_STATIC)$(EMMA_INSTRUMENT_FRAMEWORK)$(CLANG_COVERAGE)$(NATIVE_COVERAGE_PATHS),)
+# Coverage builds for TARGET_RELEASE=foo should always build from source,
+# even if TARGET_RELEASE=foo uses prebuilt mainline modules.
+# This is necessary because the checked-in prebuilts were generated with
+# instrumentation turned off.
+  ignore_apex_contributions := true
+endif
+
 ifeq (true, $(ignore_apex_contributions))
-PRODUCT_BUILD_IGNORE_APEX_CONTRIBUTION_CONTENTS += \
-  prebuilt_com.google.android.adservices \
-  prebuilt_com.google.android.appsearch \
-  prebuilt_com.google.android.art \
-  prebuilt_com.google.android.btservices \
-  prebuilt_com.google.android.configinfrastructure \
-  prebuilt_com.google.android.conscrypt \
-  prebuilt_com.google.android.devicelock \
-  prebuilt_com.google.android.healthfitness \
-  prebuilt_com.google.android.ipsec \
-  prebuilt_com.google.android.media \
-  prebuilt_com.google.android.mediaprovider \
-  prebuilt_com.google.android.ondevicepersonalization \
-  prebuilt_com.google.android.os.statsd \
-  prebuilt_com.google.android.rkpd \
-  prebuilt_com.google.android.scheduling \
-  prebuilt_com.google.android.sdkext \
-  prebuilt_com.google.android.tethering \
-  prebuilt_com.google.android.uwb \
-  prebuilt_com.google.android.wifi
+PRODUCT_BUILD_IGNORE_APEX_CONTRIBUTION_CONTENTS := true
 endif
 
 #############################################################################
@@ -588,20 +556,27 @@ ifdef PRODUCT_ENFORCE_RRO_EXEMPTED_TARGETS
       $(PRODUCT_ENFORCE_RRO_EXEMPTED_TARGETS))
 endif
 
-# Get the board API level.
-board_api_level := $(PLATFORM_SDK_VERSION)
-ifdef BOARD_API_LEVEL
-  board_api_level := $(BOARD_API_LEVEL)
-else ifdef BOARD_SHIPPING_API_LEVEL
-  # Vendors with GRF must define BOARD_SHIPPING_API_LEVEL for the vendor API level.
-  board_api_level := $(BOARD_SHIPPING_API_LEVEL)
-endif
+# This table maps sdk version 35 to vendor api level 202404 and assumes yearly
+# release for the same month.
+define sdk-to-vendor-api-level
+  $(if $(call math_lt_or_eq,$(1),34),$(1),20$(call int_subtract,$(1),11)04)
+endef
 
-# Calculate the VSR vendor API level.
-VSR_VENDOR_API_LEVEL := $(board_api_level)
-
-ifdef PRODUCT_SHIPPING_API_LEVEL
-  VSR_VENDOR_API_LEVEL := $(call math_min,$(PRODUCT_SHIPPING_API_LEVEL),$(board_api_level))
+ifdef PRODUCT_SHIPPING_VENDOR_API_LEVEL
+# Follow the version that is set manually.
+  VSR_VENDOR_API_LEVEL := $(PRODUCT_SHIPPING_VENDOR_API_LEVEL)
+else
+  # VSR API level is the vendor api level of the product shipping API level.
+  VSR_VENDOR_API_LEVEL := $(call sdk-to-vendor-api-level,$(PLATFORM_SDK_VERSION))
+  ifdef PRODUCT_SHIPPING_API_LEVEL
+    VSR_VENDOR_API_LEVEL := $(call sdk-to-vendor-api-level,$(PRODUCT_SHIPPING_API_LEVEL))
+  endif
+  ifdef BOARD_SHIPPING_API_LEVEL
+    # Vendors with GRF must define BOARD_SHIPPING_API_LEVEL for the vendor API level.
+    # In this case, the VSR API level is the minimum of the PRODUCT_SHIPPING_API_LEVEL
+    # and RELEASE_BOARD_API_LEVEL
+    VSR_VENDOR_API_LEVEL := $(call math_min,$(VSR_VENDOR_API_LEVEL),$(RELEASE_BOARD_API_LEVEL))
+  endif
 endif
 .KATI_READONLY := VSR_VENDOR_API_LEVEL
 
@@ -616,7 +591,7 @@ endif
 
 # Boolean variable determining if selinux labels of /dev are enforced
 CHECK_DEV_TYPE_VIOLATIONS := false
-ifneq ($(call math_gt,$(VSR_VENDOR_API_LEVEL),35),)
+ifneq ($(call math_gt,$(VSR_VENDOR_API_LEVEL),202404),)
   CHECK_DEV_TYPE_VIOLATIONS := true
 else ifneq ($(PRODUCT_CHECK_DEV_TYPE_VIOLATIONS),)
   CHECK_DEV_TYPE_VIOLATIONS := $(PRODUCT_CHECK_DEV_TYPE_VIOLATIONS)
@@ -641,6 +616,15 @@ ifneq ($$(filter-out true false,$$(PRODUCT_BUILD_$(1)_IMAGE)),)
     $$(error Invalid PRODUCT_BUILD_$(1)_IMAGE: $$(PRODUCT_BUILD_$(1)_IMAGE) -- true false and empty are supported)
 endif
 endef
+
+ifndef PRODUCT_VIRTUAL_AB_COW_VERSION
+  PRODUCT_VIRTUAL_AB_COW_VERSION := 2
+  ifdef PRODUCT_SHIPPING_API_LEVEL
+    ifeq (true,$(call math_gt_or_eq,$(PRODUCT_SHIPPING_API_LEVEL),34))
+      PRODUCT_VIRTUAL_AB_COW_VERSION := 3
+    endif
+  endif
+endif
 
 # Copy and check the value of each PRODUCT_BUILD_*_IMAGE variable
 $(foreach image, \
