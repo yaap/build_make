@@ -522,8 +522,13 @@ function lunch()
     YAAP_DEVICE=$YAAP_BUILD
     export YAAP_DEVICE
 
+    local depsOnly=""
+    if [[ $(find ./device -type d -name "$YAAP_DEVICE" -print -quit) != "" ]]; then
+        depsOnly="true"
+    fi
+
     cd $T > /dev/null
-    vendor/yaap/build/tools/roomservice.py $product
+    vendor/yaap/build/tools/roomservice.py $product $depsOnly
     cd - > /dev/null
 
     _lunch_meat $product $release $variant
