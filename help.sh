@@ -9,10 +9,11 @@ TOP="${PWD}"
 message='The basic Android build process is:
 
 cd '"${TOP}"'
-source build/envsetup.sh    # Add "lunch" (and other utilities and variables)
-                            # to the shell environment.
-lunch [<product>-<variant>] # Choose the device to target.
-m [<goals>]                 # Execute the configured build.
+source build/envsetup.sh                # Add "lunch" (and other utilities and variables)
+                                        # to the shell environment.
+lunch [<product>-<variant>]             # Choose the device to target with the latest release.
+lunch [<product>-<release>-<variant>]   # Choose the device to target and a specific release.
+m [<goals>]                             # Execute the configured build.
 
 Usage of "m" imitates usage of the program "make".
 See '"${SCRIPT_DIR}"'/Usage.txt for more info about build usage and concepts.

@@ -496,22 +496,35 @@ function lunch()
 
     export TARGET_BUILD_APPS=
 
-    # This must be <product>-<variant>
-    local product variant
-    # Split string on the '-' character.
-    IFS="-" read -r product variant <<< "$selection"
+    # This must be <product>-<variant> or <product>-<release>-<variant>
+    local product release variant dashes
+    dashes=$(grep -o "-" <<< "$selection" | wc -l)
+    if [[ $dashes == 2 ]]
+    then
+        # Split string on the '-' character.
+        IFS="-" read -r product release variant <<< "$selection"
+    elif [[ $dashes == 1 ]]
+    then
+        # Split string on the '-' character.
+        IFS="-" read -r product variant <<< "$selection"
+    fi
 
     if [[ -z "$product" ]] || [[ -z "$variant" ]]
     then
         echo
         echo "Invalid lunch combo: $selection"
-        echo "Valid combos must be of the form <product>-<variant>"
+        echo "Valid combos must be of the form <product>-<variant> or <product>-<release>-<variant>"
         return 1
     fi
 
-    # always pick the latest release
-    release=$(grep "BUILD_ID" build/make/core/build_id.mk | tail -1 | cut -d '=' -f 2 | cut -d '.' -f 1 | tr '[:upper:]' '[:lower:]')
-    export TARGET_RELEASE=$release
+    if [[ -z "$release" ]]
+    then
+        # always pick the latest release
+        release=$(grep "BUILD_ID" build/make/core/build_id.mk | tail -1 | cut -d '=' -f 2 | cut -d '.' -f 1 | tr '[:upper:]' '[:lower:]')
+        echo "automatically selected latest release: ${release}"
+        echo "to choose a different release use the form <product>-<release>-<variant>"
+        export TARGET_RELEASE=$release
+    fi
 
     if (echo -n $1 | grep -q -e "^yaap_") ; then
       YAAP_BUILD=$(echo -n $product | sed -e 's/^yaap_//g')
