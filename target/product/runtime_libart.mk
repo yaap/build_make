@@ -110,25 +110,25 @@ PRODUCT_SYSTEM_PROPERTIES += \
 # without exceptions).
 # TODO(b/243646876): Remove `pm.dexopt.post-boot`.
 PRODUCT_SYSTEM_PROPERTIES += \
-    pm.dexopt.post-boot?=speed \
-    pm.dexopt.first-boot?=speed \
-    pm.dexopt.boot-after-ota?=speed-profile \
-    pm.dexopt.boot-after-mainline-update?=speed \
+    pm.dexopt.post-boot?=verify \
+    pm.dexopt.first-boot?=verify \
+    pm.dexopt.boot-after-ota?=verify \
+    pm.dexopt.boot-after-mainline-update?=verify \
     pm.dexopt.install?=speed-profile \
-    pm.dexopt.install-fast?=speed \
+    pm.dexopt.install-fast?=skip \
     pm.dexopt.install-bulk?=speed-profile \
-    pm.dexopt.install-bulk-secondary?=speed \
-    pm.dexopt.install-bulk-downgraded?=speed \
-    pm.dexopt.install-bulk-secondary-downgraded?=speed \
+    pm.dexopt.install-bulk-secondary?=verify \
+    pm.dexopt.install-bulk-downgraded?=verify \
+    pm.dexopt.install-bulk-secondary-downgraded?=verify \
     pm.dexopt.bg-dexopt?=speed-profile \
     pm.dexopt.ab-ota?=speed-profile \
-    pm.dexopt.inactive?=speed \
-    pm.dexopt.cmdline?=speed \
-    pm.dexopt.first-use?=speed-profile \
-    pm.dexopt.secondary?=speed-profile \
+    pm.dexopt.inactive?=verify \
+    pm.dexopt.cmdline?=verify \
     pm.dexopt.shared?=speed
 
-OVERRIDE_DISABLE_DEXOPT_ALL ?= false
+ifneq (,$(filter eng,$(TARGET_BUILD_VARIANT)))
+    OVERRIDE_DISABLE_DEXOPT_ALL ?= true
+endif
 
 # OVERRIDE_DISABLE_DEXOPT_ALL disables all dexpreopt (build-time) and dexopt (on-device) activities.
 # This option is for faster iteration during development and should never be enabled for production.
