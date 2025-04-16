@@ -48,18 +48,49 @@ if [ ! "$T" ]; then
 fi
 IMPORTING_ENVSETUP=true source $T/build/make/shell_utils.sh
 
+function aospurl()
+{
+    local MANIFEST_PATH="${T}/.repo/manifests/default.xml"
+    local AOSP_URL=$(grep fetch < "${MANIFEST_PATH}" | cut -d "=" -f 2 | sed "s/\"//g")
+    local PROJECT=$(pwd -P | sed "s#$T\/##")
+    if [[ $PROJECT == ".repo/manifests" ]] || [[ $PROJECT == "manifest" ]]; then
+        echo "${AOSP_URL}platform/manifest"
+    else
+        local manifestLine=$(grep "path=\"${PROJECT}\"" < "${MANIFEST_PATH}")
+        if [[ $manifestLine != "" ]]; then
+            local manifestName=$(echo "$manifestLine" | sed "s/\"//g" | sed "s/ /\n/g")
+            local manifestName=$(echo "$manifestName" | grep name | cut -d "=" -f 2)
+            if [[ $manifestName != "" ]]; then
+                echo "${AOSP_URL}${manifestName}"
+            fi
+        fi
+    fi
+}
+
 function aospremote()
 {
-    if ! [ -d ".git" ]
-    then
+    if ! [ -d ".git" ]; then
         echo -e "\033[1;31mnot a git repository\033[0m"
         return 1
     fi
-    git remote remove aosp 2> /dev/null
-    PROJECT=$(pwd -P | sed "s#$T\/##")
-    PFX="platform/"
-    git remote add aosp https://android.googlesource.com/$PFX$PROJECT
-    echo "Remote 'aosp' created"
+    local remoteUrl=$(aospurl)
+    if [[ $remoteUrl == "" ]]; then
+        echo -e "\033[1;31mFailed creating 'aosp' remote\033[0m"
+        return 1
+    fi
+    if git remote -v | grep -q aosp; then
+        local currUrl=$(git remote get-url aosp)
+        if [[ "$currUrl" == "$remoteUrl" ]]; then
+            echo -e "Remote 'aosp' existed: \033[1;36m${remoteUrl}\033[0m"
+            return 0
+        fi
+        git remote set-url aosp "${remoteUrl}"
+        echo -e "Remote 'aosp' url set: \033[1;36m${remoteUrl}\033[0m"
+        return 0
+    fi
+    git remote add aosp "${remoteUrl}"
+    echo -e "Remote 'aosp' created: \033[1;36m${remoteUrl}\033[0m"
+    return 0
 }
 
 # Get all the build variables needed by this script in a single call to the build system.
