@@ -481,103 +481,6 @@ function print_lunch_menu()
     echo
 }
 
-function lunch()
-{
-    local answer
-    setup_cog_env_if_needed
-
-    if [[ $# -gt 1 ]]; then
-        echo "usage: lunch [target]" >&2
-        return 1
-    fi
-
-    local used_lunch_menu=0
-
-    if [ "$1" ]; then
-        answer=$1
-    else
-        print_lunch_menu
-        echo "Which would you like? [aosp_cf_x86_64_phone-trunk_staging-eng]"
-        echo -n "Pick from common choices above (e.g. 13) or specify your own (e.g. aosp_barbet-trunk_staging-eng): "
-        read answer
-        used_lunch_menu=1
-    fi
-
-    local selection=
-
-    if [ -z "$answer" ]
-    then
-        selection=aosp_cf_x86_64_phone-trunk_staging-eng
-    elif (echo -n $answer | grep -q -e "^[0-9][0-9]*$")
-    then
-        local choices=($(TARGET_BUILD_APPS= TARGET_PRODUCT= TARGET_RELEASE= TARGET_BUILD_VARIANT= _get_build_var_cached COMMON_LUNCH_CHOICES 2>/dev/null))
-        if [ $answer -le ${#choices[@]} ]
-        then
-            # array in zsh starts from 1 instead of 0.
-            if [ -n "$ZSH_VERSION" ]
-            then
-                selection=${choices[$(($answer))]}
-            else
-                selection=${choices[$(($answer-1))]}
-            fi
-        fi
-    else
-        selection=$answer
-    fi
-
-    export TARGET_BUILD_APPS=
-
-    # This must be <product>-<variant> or <product>-<release>-<variant>
-    local product release variant dashes
-    dashes=$(grep -o "-" <<< "$selection" | wc -l)
-    if [[ $dashes == 2 ]]
-    then
-        # Split string on the '-' character.
-        IFS="-" read -r product release variant <<< "$selection"
-    elif [[ $dashes == 1 ]]
-    then
-        # Split string on the '-' character.
-        IFS="-" read -r product variant <<< "$selection"
-    fi
-
-    if [[ -z "$product" ]] || [[ -z "$variant" ]]
-    then
-        echo
-        echo "Invalid lunch combo: $selection"
-        echo "Valid combos must be of the form <product>-<variant> or <product>-<release>-<variant>"
-        return 1
-    fi
-
-    if [[ -z "$release" ]]
-    then
-        # always pick the latest release
-        release=$(grep "BUILD_ID" build/make/core/build_id.mk | tail -1 | cut -d '=' -f 2 | cut -d '.' -f 1 | tr '[:upper:]' '[:lower:]')
-        echo "automatically selected latest release: ${release}"
-        echo "to choose a different release use the form <product>-<release>-<variant>"
-        export TARGET_RELEASE=$release
-    fi
-
-    if (echo -n $1 | grep -q -e "^yaap_") ; then
-      YAAP_BUILD=$(echo -n $product | sed -e 's/^yaap_//g')
-    else
-      YAAP_BUILD=
-    fi
-    export YAAP_BUILD
-    YAAP_DEVICE=$YAAP_BUILD
-    export YAAP_DEVICE
-
-    local depsOnly=""
-    if [[ $(find ./device -type d -name "$YAAP_DEVICE" -print -quit) != "" ]]; then
-        depsOnly="true"
-    fi
-
-    cd $T > /dev/null
-    vendor/yaap/build/tools/roomservice.py $product $depsOnly
-    cd - > /dev/null
-
-    _lunch_meat $product $release $variant
-}
-
 function _lunch_meat()
 {
     local product=$1
@@ -656,20 +559,27 @@ function _lunch_usage()
         echo
         echo "Usage: lunch TARGET_PRODUCT-TARGET_RELEASE-TARGET_BUILD_VARIANT"
         echo
-        echo "  Chose the product, release and variant to use. This"
+        echo "  Choose the product, release and variant to use. This"
+        echo "  legacy format is maintained for compatibility."
+        echo
+        echo
+        echo "Usage: lunch TARGET_PRODUCT-TARGET_BUILD_VARIANT"
+        echo
+        echo "  Choose the product and variant to use."
+        echo "  Selects the latest release automatically. This"
         echo "  legacy format is maintained for compatibility."
         echo
         echo
         echo "Note that the previous interactive menu and list of hard-coded"
         echo "list of curated targets has been removed. If you would like the"
         echo "list of products, release configs for a particular product, or"
-        echo "variants, run list_products, list_release_configs, list_variants"
+        echo "variants, run list_products list_releases or list_variants"
         echo "respectively."
         echo
     ) 1>&2
 }
 
-function lunch2()
+function lunch()
 {
     if [[ $# -eq 1 && $1 = "--help" ]]; then
         _lunch_usage
@@ -684,17 +594,26 @@ function lunch2()
         return 1
     fi
 
-    local product release variant
+    local product release variant dashes
+    local ogFormat=false
 
     # Handle the legacy format
     local legacy=$(echo $1 | grep "-")
     if [[ $# -eq 1 && -n $legacy ]]; then
-        IFS="-" read -r product release variant <<< "$1"
-        if [[ -z "$product" ]] || [[ -z "$release" ]] || [[ -z "$variant" ]]; then
-            echo "Invalid lunch combo: $1" 1>&2
-            echo "Valid combos must be of the form <product>-<release>-<variant> when using" 1>&2
-            echo "the legacy format.  Run 'lunch --help' for usage." 1>&2
-            return 1
+        dashes=$(grep -o "-" <<< "$1" | wc -l)
+        if [[ $dashes == 2 ]]
+        then
+            IFS="-" read -r product release variant <<< "$1"
+            if [[ -z "$product" ]] || [[ -z "$release" ]] || [[ -z "$variant" ]]; then
+                echo "Invalid lunch combo: $1" 1>&2
+                echo "Valid combos must be of the form <product>-<release>-<variant> when using" 1>&2
+                echo "the legacy format.  Run 'lunch --help' for usage." 1>&2
+                return 1
+            fi
+        elif [[ $dashes == 1 ]]
+        then
+            IFS="-" read -r product variant <<< "$(echo $1 | grep "-")"
+            ogFormat=true
         fi
     fi
 
@@ -710,6 +629,32 @@ function lunch2()
             variant=eng
         fi
     fi
+
+    if $ogFormat
+    then
+        # always pick the latest release
+        release=$(grep "BUILD_ID" build/make/core/build_id.mk | tail -1 | cut -d '=' -f 2 | cut -d '.' -f 1 | tr '[:upper:]' '[:lower:]')
+        echo "automatically selected latest release: ${release}"
+        echo "to choose a different release use the form <product>-<release>-<variant>"
+    fi
+
+    if (echo -n $1 | grep -q -e "^yaap_") ; then
+      YAAP_BUILD=$(echo -n $product | sed -e 's/^yaap_//g')
+    else
+      YAAP_BUILD=
+    fi
+    export YAAP_BUILD
+    YAAP_DEVICE=$YAAP_BUILD
+    export YAAP_DEVICE
+
+    local depsOnly=""
+    if [[ $(find ./device -type d -name "$YAAP_DEVICE" -print -quit) != "" ]]; then
+        depsOnly="true"
+    fi
+
+    cd $T > /dev/null
+    vendor/yaap/build/tools/roomservice.py $product $depsOnly
+    cd - > /dev/null
 
     # Validate the selection and set all the environment stuff
     _lunch_meat $product $release $variant
