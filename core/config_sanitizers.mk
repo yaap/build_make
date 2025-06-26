@@ -325,7 +325,7 @@ ifneq ($(filter address thread hwaddress,$(my_sanitize)),)
 endif
 
 # Or if disabled globally.
-ifneq ($(PRODUCT_USE_SCUDO),true)
+ifeq ($(PRODUCT_DISABLE_SCUDO),true)
   my_sanitize := $(filter-out scudo,$(my_sanitize))
 endif
 
