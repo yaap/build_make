@@ -278,7 +278,7 @@ _product_list_vars += PRODUCT_MEMTAG_HEAP_EXCLUDE_PATHS
 # Whether this product wants to start with an empty list of default memtag_heap include paths
 _product_single_value_vars += PRODUCT_MEMTAG_HEAP_SKIP_DEFAULT_PATHS
 
-# Whether the Scudo hardened allocator is enabled platform-wide
+# Whether the Scudo hardened allocator is disabled platform-wide
 _product_single_value_vars += PRODUCT_USE_SCUDO
 
 # List of extra VNDK versions to be included
