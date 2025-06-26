@@ -157,7 +157,6 @@ $(call add_json_list, Platform_systemsdk_versions,       $(PLATFORM_SYSTEMSDK_VE
 $(call add_json_bool, Malloc_use_scudo,                  $(filter true,$(PRODUCT_USE_SCUDO)))
 $(call add_json_bool, Malloc_use_mimalloc,               $(filter true,$(PRODUCT_USE_MIMALLOC)))
 $(call add_json_bool, Malloc_low_memory,                 $(findstring true,$(MALLOC_SVELTE) $(MALLOC_LOW_MEMORY)))
-$(call add_json_bool, Malloc_use_jemalloc,               $(call invert_bool,$(filter true,$(PRODUCT_USE_SCUDO))))
 $(call add_json_bool, Malloc_zero_contents,              $(call invert_bool,$(filter false,$(MALLOC_ZERO_CONTENTS))))
 $(call add_json_bool, Malloc_pattern_fill_contents,      $(MALLOC_PATTERN_FILL_CONTENTS))
 $(call add_json_str,  Override_rs_driver,                $(OVERRIDE_RS_DRIVER))
