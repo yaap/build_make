@@ -233,9 +233,6 @@ _product_single_value_vars += PRODUCT_SYSTEM_DLKM_BASE_FS_PATH
 # The first API level this product shipped with
 _product_single_value_vars += PRODUCT_SHIPPING_API_LEVEL
 
-# The first vendor API level this product shipped with
-_product_single_value_vars += PRODUCT_SHIPPING_VENDOR_API_LEVEL
-
 _product_list_vars += VENDOR_PRODUCT_RESTRICT_VENDOR_FILES
 _product_list_vars += VENDOR_EXCEPTION_MODULES
 _product_list_vars += VENDOR_EXCEPTION_PATHS
@@ -303,12 +300,6 @@ _product_list_vars += PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST
 # List of modules that should be forcefully unmarked from being LOCAL_PRODUCT_MODULE, and hence
 # installed on /system directory by default.
 _product_list_vars += PRODUCT_FORCE_PRODUCT_MODULES_TO_SYSTEM_PARTITION
-
-# When this is true, dynamic partitions is retrofitted on a device that has
-# already been launched without dynamic partitions. Otherwise, the device
-# is launched with dynamic partitions.
-# This flag implies PRODUCT_USE_DYNAMIC_PARTITIONS.
-_product_single_value_vars += PRODUCT_RETROFIT_DYNAMIC_PARTITIONS
 
 # List of directories that will be used to gate blueprint modules from the build graph
 _product_list_vars += PRODUCT_SOURCE_ROOT_DIRS
@@ -385,9 +376,6 @@ _product_single_value_vars += PRODUCT_VIRTUAL_AB_OTA
 # If set, device uses virtual A/B Compression.
 _product_single_value_vars += PRODUCT_VIRTUAL_AB_COMPRESSION
 
-# If set, device retrofits virtual A/B.
-_product_single_value_vars += PRODUCT_VIRTUAL_AB_OTA_RETROFIT
-
 # If set, forcefully generate a non-A/B update package.
 # Note: A device configuration should inherit from virtual_ab_ota_plus_non_ab.mk
 # instead of setting this variable directly.
@@ -429,6 +417,12 @@ _product_single_value_vars += PRODUCT_MEMCG_V2_FORCE_ENABLED
 
 # If true, the cgroup v2 hierarchy will be split into apps/system subtrees
 _product_single_value_vars += PRODUCT_CGROUP_V2_SYS_APP_ISOLATION_ENABLED
+
+# If set, check treble labeling
+_product_single_value_vars += PRODUCT_ENFORCE_SELINUX_TREBLE_LABELING
+
+# Path to a tracking list file for treble labeling
+_product_single_value_vars += PRODUCT_SELINUX_TREBLE_LABELING_TRACKING_LIST_FILE
 
 # List of .json files to be merged/compiled into vendor/etc/linker.config.pb and product/etc/linker.config.pb
 _product_list_vars += PRODUCT_VENDOR_LINKER_CONFIG_FRAGMENTS
