@@ -51,7 +51,7 @@ Common options that apply to both of non-A/B and A/B OTAs
       don't enforce a data wipe with this flag. Because we know for sure this is
       NOT an actual downgrade case, but two builds happen to be cut in a reverse
       order (e.g. from two branches). A legit use case is that we cut a new
-      build C (after having A and B), but want to enfore an update path of A ->
+      build C (after having A and B), but want to enforce an update path of A ->
       C -> B. Specifying --downgrade may not help since that would enforce a
       data wipe for C -> B update.
 
@@ -269,9 +269,7 @@ import logging
 import multiprocessing
 import os
 import os.path
-import re
 import shutil
-import subprocess
 import sys
 import zipfile
 
@@ -281,7 +279,7 @@ import ota_utils
 import payload_signer
 from ota_utils import (VABC_COMPRESSION_PARAM_SUPPORT, FinalizeMetadata, GetPackageMetadata,
                        PayloadGenerator, SECURITY_PATCH_LEVEL_PROP_NAME, ExtractTargetFiles, CopyTargetFilesDir, TARGET_FILES_IMAGES_SUBDIR)
-from common import DoesInputFileContain, IsSparseImage
+from common import DoesInputFileContain
 import target_files_diff
 from non_ab_ota import GenerateNonAbOtaPackage
 from payload_signer import PayloadSigner
@@ -369,7 +367,7 @@ def ModifyKeyvalueList(content: str, key: str, value: str):
   """ Update update the key value list with specified key and value
   Args:
     content: The string content of dynamic_partitions_info.txt. Each line
-      should be a key valur pair, where string before the first '=' are keys,
+      should be a key value pair, where string before the first '=' are keys,
       remaining parts are values.
     key: the key of the key value pair to modify
     value: the new value to replace with
@@ -451,7 +449,7 @@ def GetTargetFilesZipForSecondaryImages(input_file, skip_postinstall=False):
   slot will be used. This is to ensure that we always have valid boot, vbmeta,
   bootloader images in the inactive slot.
 
-  After writing system_other to inactive slot's system partiiton,
+  After writing system_other to inactive slot's system partition,
   PackageManagerService will read `ro.cp_system_other_odex`, and set
   `sys.cppreopt` to "requested". Then, according to
   system/extras/cppreopts/cppreopts.rc , init will mount system_other at
@@ -817,7 +815,7 @@ def GenerateAbOtaPackage(target_file, output_file, source_file=None):
         logger.info("Source and Target have different cow VABC_COW_VERSION specified, default to minimum version")
         OPTIONS.vabc_cow_version = min(source_info.vabc_cow_version, target_info.vabc_cow_version)
 
-    # Virtual AB Compression was introduced in Androd S.
+    # Virtual AB Compression was introduced in Android S.
     # Later, we backported VABC to Android R. But verity support was not
     # backported, so if VABC is used and we are on Android R, disable
     # verity computation.
@@ -1015,8 +1013,6 @@ def GenerateAbOtaPackage(target_file, output_file, source_file=None):
     env_override["LD_PRELOAD"] = liblz4_path + \
         ":" + os.environ.get("LD_PRELOAD", "")
 
-  if OPTIONS.disable_vabc:
-    additional_args += ["--disable_vabc=true"]
   if OPTIONS.enable_vabc_xor:
     additional_args += ["--enable_vabc_xor=true"]
   if OPTIONS.compressor_types:
@@ -1143,8 +1139,6 @@ def main(argv):
       OPTIONS.extracted_input = a
     elif o == "--skip_postinstall":
       OPTIONS.skip_postinstall = True
-    elif o == "--retrofit_dynamic_partitions":
-      raise ValueError("Retrofit dynamic partitions is no longer supported")
     elif o == "--skip_compatibility_check":
       OPTIONS.skip_compatibility_check = True
     elif o == "--output_metadata_path":
@@ -1169,7 +1163,9 @@ def main(argv):
       custom_partition, custom_image = a.split("=")
       OPTIONS.custom_images[custom_partition] = custom_image
     elif o == "--disable_vabc":
-      OPTIONS.disable_vabc = True
+      raise ValueError("disabling Virtual AB compression is no longer supported."
+                       "VABC has greatly improved over the years and greatly outperforms"
+                       "VAB in every aspect. We have deprecated plain VAB in android 16")
     elif o == "--spl_downgrade":
       OPTIONS.spl_downgrade = True
       OPTIONS.wipe_user_data = True
@@ -1401,7 +1397,7 @@ def main(argv):
           "such OTA will likely cause device fail to boot. Pass --spl_downgrade "
           "to override this check. This script expects security patch level to "
           "be in format yyyy-mm-dd (e.x. 2021-02-05). It's possible to use "
-          "separators other than -, so as long as it's used consistenly across "
+          "separators other than -, so as long as it's used consistently across "
           "all SPL dates".format(target_spl, source_spl))
     elif not is_spl_downgrade and OPTIONS.spl_downgrade:
       raise ValueError("--spl_downgrade specified but no actual SPL downgrade"
