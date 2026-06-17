@@ -6253,6 +6253,9 @@ endif
 ifneq ($(BOARD_PARTIAL_OTA_UPDATE_PARTITIONS_LIST),)
 	$(hide) echo "partial_ota_update_partitions_list=$(BOARD_PARTIAL_OTA_UPDATE_PARTITIONS_LIST)" >> $@
 endif
+ifneq ($(TARGET_OTA_ASSERT_DEVICE),)
+	$(hide) echo "ota_override_device=$(TARGET_OTA_ASSERT_DEVICE)" >> $@
+endif
 	$(hide) sort -o $@ $@
 
 $(call declare-0p-target,$(INSTALLED_FASTBOOT_INFO_TARGET))
@@ -6261,10 +6264,6 @@ $(call declare-0p-target,$(INSTALLED_FASTBOOT_INFO_TARGET))
 fastboot_info: $(INSTALLED_FASTBOOT_INFO_TARGET)
 
 droidcore-unbundled: $(INSTALLED_FASTBOOT_INFO_TARGET)
-
-ifneq ($(TARGET_OTA_ASSERT_DEVICE),)
-	$(hide) echo "ota_override_device=$(TARGET_OTA_ASSERT_DEVICE)" >> $@
-endif
 
 $(call declare-0p-target,$(INSTALLED_MISC_INFO_TARGET))
 
