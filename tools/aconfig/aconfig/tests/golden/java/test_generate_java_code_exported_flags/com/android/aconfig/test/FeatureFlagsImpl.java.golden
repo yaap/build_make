@@ -1,0 +1,57 @@
+package com.android.aconfig.test;
+
+import android.os.Build;
+import android.os.flagging.AconfigPackage;
+import android.util.Log;
+/**
+ * @deprecated Use {@link ExportedFlags} instead.
+ */
+@Deprecated
+public final class FeatureFlagsImpl implements FeatureFlags {
+    private static final String TAG = "FeatureFlagsImplExport";
+    private static volatile boolean isCached = false;
+
+    private static boolean disabledRwExported = false;
+    private static boolean enabledFixedRoExported = false;
+    private static boolean enabledRoExported = false;
+    private void init() {
+        try {
+            AconfigPackage reader = AconfigPackage.load("com.android.aconfig.test");
+            disabledRwExported = Build.VERSION.SDK_INT >= 36 ? true : reader.getBooleanFlagValue("disabled_rw_exported", false);
+            enabledFixedRoExported = reader.getBooleanFlagValue("enabled_fixed_ro_exported", false);
+            enabledRoExported = reader.getBooleanFlagValue("enabled_ro_exported", false);
+        } catch (Exception e) {
+            // pass
+            Log.e(TAG, e.toString());
+        } catch (LinkageError e) {
+            // for mainline module running on older devices.
+            // This should be replaces to version check, after the version bump.
+            Log.w(TAG, e.toString());
+        }
+        isCached = true;
+    }
+    @Override
+    public boolean disabledRwExported() {
+        if (!isCached) {
+            init();
+        }
+        return disabledRwExported;
+    }
+
+    @Override
+    public boolean enabledFixedRoExported() {
+        if (!isCached) {
+            init();
+        }
+        return enabledFixedRoExported;
+    }
+
+    @Override
+    public boolean enabledRoExported() {
+        if (!isCached) {
+            init();
+        }
+        return enabledRoExported;
+    }
+
+}

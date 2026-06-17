@@ -1,5 +1,6 @@
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
 }
 
 rust_defaults {
@@ -13,6 +14,10 @@ rust_defaults {
         "libcxx",
         "libthiserror",
     ],
+    cfgs: select(release_flag("RELEASE_ACONFIG_PARSE_V4"), {
+        true: ["enable_parse_v4"],
+        default: [],
+    }),
 }
 
 rust_library {
@@ -29,6 +34,11 @@ rust_library {
         "//apex_available:anyapex",
     ],
     min_sdk_version: "29",
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
 }
 
 rust_library {
@@ -93,6 +103,11 @@ rust_ffi_static {
         "//apex_available:anyapex",
     ],
     min_sdk_version: "29",
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
 }
 
 // flag read api cc interface
@@ -120,6 +135,10 @@ cc_library {
     target: {
         linux: {
             version_script: "libaconfig_storage_read_api_cc.map",
+        },
+        windows: {
+            enabled: true,
+            ldflags: ["-Wl,--allow-multiple-definition"],
         },
     },
     double_loadable: true,
@@ -190,6 +209,7 @@ java_library {
     ],
     static_libs: [
         "aconfig_storage_file_java",
+        "libstatslog_aconfig_java_platform",
     ],
     sdk_version: "current",
     visibility: [

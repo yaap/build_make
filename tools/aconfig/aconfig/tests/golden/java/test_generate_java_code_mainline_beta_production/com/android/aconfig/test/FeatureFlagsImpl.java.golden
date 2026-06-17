@@ -1,0 +1,115 @@
+package com.android.aconfig.test;
+import android.provider.DeviceConfig;
+/** @hide */
+public final class FeatureFlagsImpl implements FeatureFlags {
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRo() {
+        return false;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRw() {
+        try {
+            return DeviceConfig.getBoolean(
+                "aconfig_test",
+                Flags.FLAG_DISABLED_RW,
+                false);
+        } catch (NullPointerException e) {
+            throw new RuntimeException(
+                "Cannot read value from namespace aconfig_test "
+                + "from DeviceConfig. It could be that the code using flag "
+                + "executed before SettingsProvider initialization. Please use "
+                + "fixed read-only flag by adding is_fixed_read_only: true in "
+                + "flag declaration.",
+                e
+            );
+        }
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRwExported() {
+        try {
+            return DeviceConfig.getBoolean(
+                "aconfig_test",
+                Flags.FLAG_DISABLED_RW_EXPORTED,
+                false);
+        } catch (NullPointerException e) {
+            throw new RuntimeException(
+                "Cannot read value from namespace aconfig_test "
+                + "from DeviceConfig. It could be that the code using flag "
+                + "executed before SettingsProvider initialization. Please use "
+                + "fixed read-only flag by adding is_fixed_read_only: true in "
+                + "flag declaration.",
+                e
+            );
+        }
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRwInOtherNamespace() {
+        try {
+            return DeviceConfig.getBoolean(
+                "other_namespace",
+                Flags.FLAG_DISABLED_RW_IN_OTHER_NAMESPACE,
+                false);
+        } catch (NullPointerException e) {
+            throw new RuntimeException(
+                "Cannot read value from namespace other_namespace "
+                + "from DeviceConfig. It could be that the code using flag "
+                + "executed before SettingsProvider initialization. Please use "
+                + "fixed read-only flag by adding is_fixed_read_only: true in "
+                + "flag declaration.",
+                e
+            );
+        }
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledFixedRo() {
+        return true;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledFixedRoExported() {
+        return true;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRo() {
+        return true;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRoExported() {
+        return true;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRw() {
+        try {
+            return DeviceConfig.getBoolean(
+                "aconfig_test",
+                Flags.FLAG_ENABLED_RW,
+                true);
+        } catch (NullPointerException e) {
+            throw new RuntimeException(
+                "Cannot read value from namespace aconfig_test "
+                + "from DeviceConfig. It could be that the code using flag "
+                + "executed before SettingsProvider initialization. Please use "
+                + "fixed read-only flag by adding is_fixed_read_only: true in "
+                + "flag declaration.",
+                e
+            );
+        }
+    }
+
+}

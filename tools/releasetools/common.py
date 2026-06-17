@@ -294,7 +294,11 @@ def Run(args, verbose=None, **kwargs):
 
   # Don't log any if caller explicitly says so.
   if verbose:
-    logger.info("  Running: \"%s\"", " ".join(args))
+    cwd = kwargs.get("cwd")
+    if cwd:
+      logger.info("  Running: \"%s\" @ %s", " ".join(args), cwd)
+    else:
+      logger.info("  Running: \"%s\"", " ".join(args))
   return subprocess.Popen(args, **kwargs)
 
 
@@ -507,6 +511,12 @@ class BuildInfo(object):
     vabc_xor_enabled = vendor_prop and \
         vendor_prop.GetProp("ro.virtual_ab.compression.xor.enabled") == "true"
     return vabc_xor_enabled
+
+  @property
+  def supports_ublk(self):
+    vendor_prop = self.info_dict.get("vendor.build.prop")
+    return vendor_prop and \
+        vendor_prop.GetProp("ro.virtual_ab.ublk.enabled") == "true"
 
   @property
   def vendor_suppressed_vabc(self):
@@ -785,7 +795,7 @@ def WriteBytesToInputFile(input_file, fn, data):
     with input_file.open(fn, "w") as entry_fp:
       return entry_fp.write(data)
   elif zipfile.is_zipfile(input_file):
-    with zipfile.ZipFile(input_file, "r", allowZip64=True) as zfp:
+    with zipfile.ZipFile(input_file, "a", allowZip64=True) as zfp:
       with zfp.open(fn, "w") as entry_fp:
         return entry_fp.write(data)
   else:
@@ -1659,9 +1669,10 @@ def BuildVBMeta(image_path, partitions, name, needed_partitions,
   cmd = [avbtool, "make_vbmeta_image", "--output", image_path]
   AppendAVBSigningArgs(cmd, name)
 
-  custom_partitions = OPTIONS.info_dict.get(
-      "avb_custom_images_partition_list", "").strip().split()
-  custom_avb_partitions = ["vbmeta_" + part for part in OPTIONS.info_dict.get(
+  custom_partitions = OPTIONS.info_dict.get("custom_images_partition_list", "").strip().split()
+  custom_avb_partitions = OPTIONS.info_dict.get(
+        "avb_custom_images_partition_list", "").strip().split()
+  custom_vbmeta_partitions = ["vbmeta_" + part for part in OPTIONS.info_dict.get(
       "avb_custom_vbmeta_images_partition_list", "").strip().split()]
 
   avb_partitions = {}
@@ -1670,8 +1681,9 @@ def BuildVBMeta(image_path, partitions, name, needed_partitions,
       continue
     assert (partition in AVB_PARTITIONS or
             partition in AVB_VBMETA_PARTITIONS or
+            partition in custom_partitions or
             partition in custom_avb_partitions or
-            partition in custom_partitions), \
+            partition in custom_vbmeta_partitions), \
         'Unknown partition: {}'.format(partition)
     assert os.path.exists(path), \
         'Failed to find {} for {}'.format(path, partition)
@@ -1910,6 +1922,7 @@ def _SignBootableImage(image_path, prebuilt_name, partition_name,
            "--partition_size", str(part_size), "--partition_name",
            partition_name]
     # Use sha256 of the kernel as salt for reproducible builds
+    salt = None
     with tempfile.TemporaryDirectory() as tmpdir:
       RunAndCheckOutput(["unpack_bootimg", "--boot_img", image_path, "--out", tmpdir])
       for filename in ["kernel", "ramdisk", "vendor_ramdisk00"]:
@@ -2343,11 +2356,10 @@ def GetNonSparseImage(which, tmpdir):
     A Image object.
   """
   path = os.path.join(tmpdir, "IMAGES", which + ".img")
-  mappath = os.path.join(tmpdir, "IMAGES", which + ".map")
 
-  # The image and map files must have been created prior to calling
+  # The image (must) and map files (optional) must have been created prior to calling
   # ota_from_target_files.py (since LMP).
-  assert os.path.exists(path) and os.path.exists(mappath)
+  assert os.path.exists(path)
 
   return images.FileImage(path)
 
@@ -2370,10 +2382,11 @@ def GetSparseImage(which, tmpdir, input_zip, allow_shared_blocks):
   """
   path = os.path.join(tmpdir, "IMAGES", which + ".img")
   mappath = os.path.join(tmpdir, "IMAGES", which + ".map")
-
-  # The image and map files must have been created prior to calling
+  # The image (must) and map files (optional) must have been created prior to calling
   # ota_from_target_files.py (since LMP).
-  assert os.path.exists(path) and os.path.exists(mappath)
+  assert os.path.exists(path)
+  if not os.path.exists(mappath):
+    mappath = None
 
   # In ext4 filesystems, block 0 might be changed even being mounted R/O. We add
   # it to clobbered_blocks so that it will be written to the target
@@ -2555,7 +2568,7 @@ def GetMinSdkVersionInt(apk_name, codename_to_api_level_map):
 
 def SignFile(input_name, output_name, key, password, min_api_level=None,
              codename_to_api_level_map=None, whole_file=False,
-             extra_signapk_args=None):
+             extra_signapk_args=None, log_on_success=False):
   """Sign the input_name zip/jar/apk, producing output_name.  Use the
   given key and password (the latter may be None if the key does not
   have a password.
@@ -2573,6 +2586,9 @@ def SignFile(input_name, output_name, key, password, min_api_level=None,
 
   Caller may optionally specify extra args to be passed to SignApk, which
   defaults to OPTIONS.extra_signapk_args if omitted.
+
+  log_on_success can be provided to log output of signing file on success,
+  default behavior is to skip logging when signing is successful.
   """
   if codename_to_api_level_map is None:
     codename_to_api_level_map = {}
@@ -2609,6 +2625,8 @@ def SignFile(input_name, output_name, key, password, min_api_level=None,
     raise ExternalError(
         "Failed to run {}: return code {}:\n{}".format(cmd,
                                                        proc.returncode, stdoutdata))
+  if log_on_success:
+    logger.info("Output from  SignFile: %s", stdoutdata)
 
 
 def CheckSize(data, target, info_dict):
@@ -4303,3 +4321,57 @@ def ParseUpdateEngineConfig(path: str):
       raise ValueError(
           f"{path} is an invalid update_engine config, missing PAYLOAD_MINOR_VERSION {data}")
     return (int(major.group(1)), int(minor.group(1)))
+
+
+def ParseAvbInfo(info_raw: str):
+  """Parse string output of 'avbtool info_image'
+
+  Args:
+    info_raw: The raw string output of 'avbtool info_image'
+
+  Returns:
+    A dict of the parsed info
+  """
+  # line_matcher is for parsing each output line of `avbtool info_image`.
+  # example string input: "      Hash Algorithm:        sha1"
+  # example matched input: ("      ", "Hash Algorithm", "sha1")
+  line_matcher = re.compile(r'^(\s*)([^:]+):\s*(.*)$')
+  # prop_matcher is for parsing value part of 'Prop' in `avbtool info_image`.
+  # example string input: "example_prop_key -> 'example_prop_value'"
+  # example matched output: ("example_prop_key", "example_prop_value")
+  prop_matcher = re.compile(r"(.+)\s->\s'(.+)'")
+  info = {}
+  indent_stack = [[-1, info]]
+  for line_info_raw in info_raw.split('\n'):
+    # Parse the line
+    line_info_parsed = line_matcher.match(line_info_raw)
+    if not line_info_parsed:
+      continue
+    indent = len(line_info_parsed.group(1))
+    key = line_info_parsed.group(2).strip()
+    value = line_info_parsed.group(3).strip()
+
+    # Pop indentation stack
+    while indent <= indent_stack[-1][0]:
+      del indent_stack[-1]
+
+    # Insert information into 'info'.
+    cur_info = indent_stack[-1][1]
+    if value == "":
+      if key == "Descriptors":
+        empty_list = []
+        cur_info[key] = empty_list
+        indent_stack.append([indent, empty_list])
+      else:
+        empty_dict = {}
+        cur_info.append({key:empty_dict})
+        indent_stack.append([indent, empty_dict])
+    elif key == "Prop":
+      prop_parsed = prop_matcher.match(value)
+      if not prop_parsed:
+        raise ValueError(
+            "Failed to parse prop while getting avb information.")
+      cur_info.append({key:{prop_parsed.group(1):prop_parsed.group(2)}})
+    else:
+      cur_info[key] = value
+  return info

@@ -21,12 +21,16 @@ enum StoredFlagType {
   ReadWriteBoolean = 0,
   ReadOnlyBoolean = 1,
   FixedReadOnlyBoolean = 2,
+  ReadWriteInt64 = 3,
+  ReadOnlyInt64 = 4,
+  FixedReadOnlyInt64 = 5,
 };
 
 /// Flag value type enum, to be consistent with the one defined in
 /// aconfig_storage_file/src/lib.rs
 enum FlagValueType {
   Boolean = 0,
+  Int64 = 1,
 };
 
 /// Flag info enum, to be consistent with the one defined in
@@ -157,6 +161,14 @@ Result<FlagReadContext> get_flag_read_context(
 /// \input index: the boolean flag index in the file
 /// \returns the boolean flag value
 Result<bool> get_boolean_flag_value(
+    MappedStorageFile const& file,
+    uint32_t index);
+
+/// Get int flag value
+/// \input file: mapped storage file
+/// \input index: the int flag index in the file
+/// \returns the int flag value
+Result<int64_t> get_int64_flag_value(
     MappedStorageFile const& file,
     uint32_t index);
 

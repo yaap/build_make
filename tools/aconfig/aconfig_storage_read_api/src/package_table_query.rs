@@ -28,6 +28,7 @@ use anyhow::anyhow;
 pub struct PackageReadContext {
     pub package_id: u32,
     pub boolean_start_index: u32,
+    pub int_start_index: u32,
     pub fingerprint: u64,
 }
 
@@ -63,6 +64,7 @@ pub fn find_package_read_context(
             return Ok(Some(PackageReadContext {
                 package_id: interpreted_node.package_id,
                 boolean_start_index: interpreted_node.boolean_start_index,
+                int_start_index: interpreted_node.int_start_index,
                 fingerprint: interpreted_node.fingerprint,
             }));
         }
@@ -76,7 +78,7 @@ pub fn find_package_read_context(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aconfig_storage_file::{test_utils::create_test_package_table, DEFAULT_FILE_VERSION};
+    use aconfig_storage_file::test_utils::create_test_package_table;
 
     #[test]
     // this test point locks down table query - v1 files.
@@ -86,22 +88,34 @@ mod tests {
             find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_1")
                 .unwrap()
                 .unwrap();
-        let expected_package_context =
-            PackageReadContext { package_id: 0, boolean_start_index: 0, fingerprint: 0 };
+        let expected_package_context = PackageReadContext {
+            package_id: 0,
+            boolean_start_index: 0,
+            int_start_index: 0,
+            fingerprint: 0,
+        };
         assert_eq!(package_context, expected_package_context);
         let package_context =
             find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_2")
                 .unwrap()
                 .unwrap();
-        let expected_package_context =
-            PackageReadContext { package_id: 1, boolean_start_index: 3, fingerprint: 0 };
+        let expected_package_context = PackageReadContext {
+            package_id: 1,
+            boolean_start_index: 3,
+            int_start_index: 0,
+            fingerprint: 0,
+        };
         assert_eq!(package_context, expected_package_context);
         let package_context =
             find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_4")
                 .unwrap()
                 .unwrap();
-        let expected_package_context =
-            PackageReadContext { package_id: 2, boolean_start_index: 6, fingerprint: 0 };
+        let expected_package_context = PackageReadContext {
+            package_id: 2,
+            boolean_start_index: 6,
+            int_start_index: 0,
+            fingerprint: 0,
+        };
         assert_eq!(package_context, expected_package_context);
     }
 
@@ -116,6 +130,7 @@ mod tests {
         let expected_package_context = PackageReadContext {
             package_id: 0,
             boolean_start_index: 0,
+            int_start_index: 0,
             fingerprint: 15248948510590158086u64,
         };
         assert_eq!(package_context, expected_package_context);
@@ -126,6 +141,7 @@ mod tests {
         let expected_package_context = PackageReadContext {
             package_id: 1,
             boolean_start_index: 3,
+            int_start_index: 0,
             fingerprint: 4431940502274857964u64,
         };
         assert_eq!(package_context, expected_package_context);
@@ -136,43 +152,138 @@ mod tests {
         let expected_package_context = PackageReadContext {
             package_id: 2,
             boolean_start_index: 6,
+            int_start_index: 0,
             fingerprint: 16233229917711622375u64,
         };
         assert_eq!(package_context, expected_package_context);
     }
 
     #[test]
+    // this test point locks down table query - v3 files.
+    fn test_package_query_v3() {
+        let package_table = create_test_package_table(3).into_bytes();
+        let package_context =
+            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_1")
+                .unwrap()
+                .unwrap();
+        let expected_package_context = PackageReadContext {
+            package_id: 0,
+            boolean_start_index: 0,
+            int_start_index: 0,
+            fingerprint: 15248948510590158086u64,
+        };
+        assert_eq!(package_context, expected_package_context);
+        let package_context =
+            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_2")
+                .unwrap()
+                .unwrap();
+        let expected_package_context = PackageReadContext {
+            package_id: 1,
+            boolean_start_index: 3,
+            int_start_index: 0,
+            fingerprint: 4431940502274857964u64,
+        };
+        assert_eq!(package_context, expected_package_context);
+        let package_context =
+            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_4")
+                .unwrap()
+                .unwrap();
+        let expected_package_context = PackageReadContext {
+            package_id: 2,
+            boolean_start_index: 6,
+            int_start_index: 0,
+            fingerprint: 16233229917711622375u64,
+        };
+        assert_eq!(package_context, expected_package_context);
+    }
+
+    #[test]
+    #[cfg(enable_parse_v4)]
+    // this test point locks down table query - v4 files.
+    fn test_package_query_v4() {
+        let package_table = create_test_package_table(4).into_bytes();
+        let package_context =
+            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_1")
+                .unwrap()
+                .unwrap();
+        let expected_package_context = PackageReadContext {
+            package_id: 0,
+            boolean_start_index: 0,
+            int_start_index: 18,
+            fingerprint: 15248948510590158086u64,
+        };
+        assert_eq!(package_context, expected_package_context);
+        let package_context =
+            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_2")
+                .unwrap()
+                .unwrap();
+        let expected_package_context = PackageReadContext {
+            package_id: 1,
+            boolean_start_index: 3,
+            int_start_index: 6,
+            fingerprint: 4431940502274857964u64,
+        };
+        assert_eq!(package_context, expected_package_context);
+        let package_context =
+            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_4")
+                .unwrap()
+                .unwrap();
+        let expected_package_context = PackageReadContext {
+            package_id: 2,
+            boolean_start_index: 6,
+            int_start_index: 29,
+            fingerprint: 16233229917711622375u64,
+        };
+        assert_eq!(package_context, expected_package_context);
+    }
+
+    #[test]
+    #[cfg(not(enable_parse_v4))]
+    // this test point locks down table query - v4 files (disabled).
+    fn test_package_query_v4_disabled() {
+        let package_table = create_test_package_table(4).into_bytes();
+        let error =
+            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_1")
+                .unwrap_err();
+        assert!(format!("{:?}", error).starts_with("HigherStorageFileVersion"));
+    }
+
+    #[test]
     // this test point locks down table query of a non exist package
     fn test_not_existed_package_query() {
-        // this will land at an empty bucket
-        let package_table = create_test_package_table(DEFAULT_FILE_VERSION).into_bytes();
-        let package_context =
-            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_3")
-                .unwrap();
-        assert_eq!(package_context, None);
-        // this will land at the end of a linked list
-        let package_context =
-            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_5")
-                .unwrap();
-        assert_eq!(package_context, None);
+        for version in 1..=MAX_SUPPORTED_FILE_VERSION {
+            // this will land at an empty bucket
+            let package_table = create_test_package_table(version).into_bytes();
+            let package_context =
+                find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_3")
+                    .unwrap();
+            assert_eq!(package_context, None);
+            // this will land at the end of a linked list
+            let package_context =
+                find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_5")
+                    .unwrap();
+            assert_eq!(package_context, None);
+        }
     }
 
     #[test]
     // this test point locks down query error when file has a higher version
     fn test_higher_version_storage_file() {
-        let mut table = create_test_package_table(DEFAULT_FILE_VERSION);
-        table.header.version = MAX_SUPPORTED_FILE_VERSION + 1;
-        let package_table = table.into_bytes();
-        let error =
-            find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_1")
-                .unwrap_err();
-        assert_eq!(
-            format!("{:?}", error),
-            format!(
-                "HigherStorageFileVersion(Cannot read storage file with a higher version of {} with lib version {})",
-                MAX_SUPPORTED_FILE_VERSION + 1,
-                MAX_SUPPORTED_FILE_VERSION
-            )
-        );
+        for version in 1..=MAX_SUPPORTED_FILE_VERSION {
+            let mut table = create_test_package_table(version);
+            table.header.version = MAX_SUPPORTED_FILE_VERSION + 1;
+            let package_table = table.into_bytes();
+            let error =
+                find_package_read_context(&package_table[..], "com.android.aconfig.storage.test_1")
+                    .unwrap_err();
+            assert!(
+                format!("{:?}", error).starts_with(&
+                format!(
+                    "HigherStorageFileVersion(Cannot read storage file with a higher version of {} with lib version {}",
+                    MAX_SUPPORTED_FILE_VERSION + 1,
+                    MAX_SUPPORTED_FILE_VERSION
+                ))
+            );
+        }
     }
 }

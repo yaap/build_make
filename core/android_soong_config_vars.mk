@@ -44,6 +44,7 @@ $(call soong_config_set_bool,ANDROID,TARGET_SUPPORTS_32_BIT_APPS,$(if $(filter t
 $(call soong_config_set_bool,ANDROID,TARGET_SUPPORTS_64_BIT_APPS,$(if $(filter true,$(TARGET_SUPPORTS_64_BIT_APPS)),true,false))
 $(call add_soong_config_var,ANDROID,BOARD_GENFS_LABELS_VERSION)
 $(call soong_config_set_bool,ANDROID,PRODUCT_FSVERITY_GENERATE_METADATA,$(if $(filter true,$(PRODUCT_FSVERITY_GENERATE_METADATA)),true,false))
+$(call soong_config_set_bool,ANDROID,TARGET_RESTRICTS_ASHMEM_USAGE,$(TARGET_RESTRICTS_ASHMEM_USAGE))
 
 $(call add_soong_config_var,ANDROID,ADDITIONAL_M4DEFS,$(if $(BOARD_SEPOLICY_M4DEFS),$(addprefix -D,$(BOARD_SEPOLICY_M4DEFS))))
 $(call add_soong_config_var,ANDROID,TARGET_ADD_ROOT_EXTRA_VENDOR_SYMLINKS)
@@ -85,6 +86,7 @@ $(call soong_config_set,art_module,art_debug_opt_flag,$(ART_DEBUG_OPT_FLAG))
 endif
 # The default value of ART_BUILD_HOST_DEBUG is true
 $(call soong_config_set_bool,art_module,art_build_host_debug,$(if $(filter false,$(ART_BUILD_HOST_DEBUG)),false,true))
+$(call soong_config_set_bool,art_module,art_use_simulator,$(ART_USE_SIMULATOR))
 
 # For ART_BUILD_TARGET in art/build/Android.common_build.mk
 # Sets 'art_module_build_target' to true unless both NDEBUG and DEBUG variables are explicitly 'false'.
@@ -129,24 +131,31 @@ ifdef PRODUCT_AVF_ENABLED
 $(call add_soong_config_var_value,ANDROID,avf_enabled,$(PRODUCT_AVF_ENABLED))
 endif
 
-# Enable AVF remote attestation according to the flag value if PRODUCT_AVF_REMOTE_ATTESTATION_DISABLED is not
-# set to true explicitly.
+ifdef BOARD_PVMFWIMAGE_PARTITION_SIZE
+$(call soong_config_set_int,ANDROID,pvmfw_partition_size,$(BOARD_PVMFWIMAGE_PARTITION_SIZE))
+endif
+
+$(call soong_config_set,ANDROID,platform_security_patch_timestamp_string,$(PLATFORM_SECURITY_PATCH_TIMESTAMP))
+$(call soong_config_set_int,ANDROID,platform_security_patch_timestamp,$(PLATFORM_SECURITY_PATCH_TIMESTAMP))
+
+# Enable AVF remote attestation if PRODUCT_AVF_REMOTE_ATTESTATION_DISABLED is not set to true explicitly.
 ifneq (true,$(PRODUCT_AVF_REMOTE_ATTESTATION_DISABLED))
-  $(call add_soong_config_var_value,ANDROID,avf_remote_attestation_enabled,$(RELEASE_AVF_ENABLE_REMOTE_ATTESTATION))
+  $(call add_soong_config_var_value,ANDROID,avf_remote_attestation_enabled,true)
 endif
 
 ifdef PRODUCT_AVF_MICRODROID_GUEST_GKI_VERSION
 $(call add_soong_config_var_value,ANDROID,avf_microdroid_guest_gki_version,$(PRODUCT_AVF_MICRODROID_GUEST_GKI_VERSION))
 endif
 
-ifdef TARGET_BOOTS_16K
-$(call soong_config_set_bool,ANDROID,target_boots_16k,$(filter true,$(TARGET_BOOTS_16K)))
+ifdef PRODUCT_AVF_MICRODROID_PAGE_REPORTING_ORDER
+  ifeq ($(filter $(PRODUCT_AVF_MICRODROID_PAGE_REPORTING_ORDER),0 1 2 3 4 5 6 7 8 9 10),)
+    $(error PRODUCT_AVF_MICRODROID_PAGE_REPORTING_ORDER must be between 0 and 10, got $(PRODUCT_AVF_MICRODROID_PAGE_REPORTING_ORDER))
+  endif
+  $(call add_soong_config_var_value,ANDROID,avf_microdroid_page_reporting_order,$(PRODUCT_AVF_MICRODROID_PAGE_REPORTING_ORDER))
 endif
 
-ifdef PRODUCT_CGROUP_V2_SYS_APP_ISOLATION_ENABLED
-$(call add_soong_config_var_value,ANDROID,cgroup_v2_sys_app_isolation,$(PRODUCT_CGROUP_V2_SYS_APP_ISOLATION_ENABLED))
-else
-$(call add_soong_config_var_value,ANDROID,cgroup_v2_sys_app_isolation,true)
+ifdef TARGET_BOOTS_16K
+$(call soong_config_set_bool,ANDROID,target_boots_16k,$(filter true,$(TARGET_BOOTS_16K)))
 endif
 
 $(call add_soong_config_var_value,ANDROID,release_avf_allow_preinstalled_apps,$(RELEASE_AVF_ALLOW_PREINSTALLED_APPS))
@@ -158,7 +167,6 @@ $(call add_soong_config_var_value,ANDROID,release_avf_enable_multi_tenant_microd
 $(call add_soong_config_var_value,ANDROID,release_avf_enable_network,$(RELEASE_AVF_ENABLE_NETWORK))
 # TODO(b/341292601): This flag is needed until the V release. We with clean it up after V together
 # with most of the release_avf_ flags here.
-$(call add_soong_config_var_value,ANDROID,release_avf_enable_remote_attestation,$(RELEASE_AVF_ENABLE_REMOTE_ATTESTATION))
 $(call add_soong_config_var_value,ANDROID,release_avf_enable_vendor_modules,$(RELEASE_AVF_ENABLE_VENDOR_MODULES))
 $(call add_soong_config_var_value,ANDROID,release_avf_enable_virt_cpufreq,$(RELEASE_AVF_ENABLE_VIRT_CPUFREQ))
 $(call add_soong_config_var_value,ANDROID,release_avf_microdroid_kernel_version,$(RELEASE_AVF_MICRODROID_KERNEL_VERSION))
@@ -230,18 +238,6 @@ endif
 # Add uwb build flag to soong
 $(call soong_config_set,bootclasspath,release_ranging_stack,$(RELEASE_RANGING_STACK))
 
-# Add crashrecovery build flag to soong
-$(call soong_config_set,ANDROID,release_crashrecovery_module,$(RELEASE_CRASHRECOVERY_MODULE))
-# Add crashrecovery file move flags to soong, for both platform and module
-ifeq (true,$(RELEASE_CRASHRECOVERY_FILE_MOVE))
-  $(call soong_config_set,ANDROID,crashrecovery_files_in_module,true)
-  $(call soong_config_set,ANDROID,crashrecovery_files_in_platform,false)
-else
-  $(call soong_config_set,ANDROID,crashrecovery_files_in_module,false)
-  $(call soong_config_set,ANDROID,crashrecovery_files_in_platform,true)
-endif
-# Required as platform_bootclasspath is using this namespace
-$(call soong_config_set,bootclasspath,release_crashrecovery_module,$(RELEASE_CRASHRECOVERY_MODULE))
 
 
 # Add ondeviceintelligence module build flag to soong
@@ -256,8 +252,12 @@ else
 
 endif
 
-# Add uprobestats build flag to soong
-$(call soong_config_set,ANDROID,release_uprobestats_module,$(RELEASE_UPROBESTATS_MODULE))
+# Add RELEASE_DEPRECATE_RUNTIME_APEX to soong
+$(call soong_config_set_bool,ANDROID,release_deprecate_runtime_apex,$(RELEASE_DEPRECATE_RUNTIME_APEX))
+
+# Add uprobestats build flags to soong
+$(call soong_config_set,ANDROID,release_uprobestats_bridge_service,$(RELEASE_UPROBESTATS_BRIDGE_SERVICE))
+$(call soong_config_set,bootclasspath,release_uprobestats_bridge_service,$(RELEASE_UPROBESTATS_BRIDGE_SERVICE))
 # Add uprobestats file move flags to soong, for both platform and module
 ifeq (true,$(RELEASE_UPROBESTATS_FILE_MOVE))
   $(call soong_config_set,ANDROID,uprobestats_files_in_module,true)
@@ -275,12 +275,24 @@ $(call soong_config_set,bootclasspath,release_package_profiling_module,$(RELEASE
 $(call soong_config_set,ANDROID,release_anomaly_detector,$(RELEASE_ANOMALY_DETECTOR))
 $(call soong_config_set,bootclasspath,release_anomaly_detector,$(RELEASE_ANOMALY_DETECTOR))
 
-# Move VCN from platform to the Tethering module; used by both platform and module
-$(call soong_config_set,ANDROID,is_vcn_in_mainline,$(RELEASE_MOVE_VCN_TO_MAINLINE))
+# Move Telecom APIs into telephonycore; used by both platform and module
+$(call soong_config_set,ANDROID,release_telecom_mainline_module,$(RELEASE_TELECOM_MAINLINE_MODULE))
 
 # Add telephony build flag to soong
 $(call soong_config_set,ANDROID,release_telephony_module,$(RELEASE_TELEPHONY_MODULE))
 $(call soong_config_set,bootclasspath,release_telephony_module,$(RELEASE_TELEPHONY_MODULE))
+
+# Add npumanager build flag to soong
+$(call soong_config_set,ANDROID,release_npumanager_module,$(RELEASE_NPUMANAGER_MODULE))
+$(call soong_config_set,bootclasspath,release_npumanager_module,$(RELEASE_NPUMANAGER_MODULE))
+
+# Add webapp build flag to soong
+$(call soong_config_set,ANDROID,release_webapp_module,$(RELEASE_WEBAPP_MODULE))
+$(call soong_config_set,bootclasspath,release_webapp_module,$(RELEASE_WEBAPP_MODULE))
+
+# Add bettertogether build flag to soong
+$(call soong_config_set,ANDROID,release_bettertogether_module,$(RELEASE_BETTERTOGETHER_MODULE))
+$(call soong_config_set,bootclasspath,release_bettertogether_module,$(RELEASE_BETTERTOGETHER_MODULE))
 
 # Add perf-setup build flag to soong
 # Note: BOARD_PERFSETUP_SCRIPT location must be under platform_testing/scripts/perf-setup/.
@@ -415,6 +427,9 @@ ifneq ($(BUILD_OS),darwin)
   endif
 endif
 
+# Flags for Android Multiuser configuration
+$(call soong_config_set_bool,ANDROID_MULTIUSER,PRODUCT_USE_HSUM,$(if $(filter true,$(PRODUCT_USE_HSUM)),true,false))
+
 # Variables for qcom bluetooth modules.
 $(call soong_config_set,qcom_bluetooth,TARGET_BLUETOOTH_UART_DEVICE,$(TARGET_BLUETOOTH_UART_DEVICE))
 $(call soong_config_set_bool,qcom_bluetooth,BOARD_HAVE_QCOM_FM,$(if $(filter true,$(BOARD_HAVE_QCOM_FM)),true,false))
@@ -476,11 +491,6 @@ $(call soong_config_set_bool,fp_hal_feature,GOOGLE_CONFIG_TOUCH_TO_UNLOCK_ANYTIM
 # Flag for building static_apexer_tools
 $(call soong_config_set_bool,ANDROID,BUILD_HOST_static,$(if $(filter true 1,$(BUILD_HOST_static)),true,false))
 
-# Flags for CLOCKWORK
-$(call soong_config_set_bool,CLOCKWORK,CLOCKWORK_EMULATOR_PRODUCT,$(if $(filter true,$(CLOCKWORK_EMULATOR_PRODUCT)),true,false))
-$(call soong_config_set_bool,CLOCKWORK,CLOCKWORK_ENABLE_HEALTH_SERVICES_HAL,$(if $(filter true,$(CLOCKWORK_ENABLE_HEALTH_SERVICES_HAL)),true,false))
-$(call soong_config_set_bool,CLOCKWORK,CLOCKWORK_G3_BUILD,$(if $(filter true,$(CLOCKWORK_G3_BUILD)),true,false))
-
 # Flag for using SetupWizardCar certificate
 $(call soong_config_set_bool,AUTO,USE_AUTOMTIVE_SETUPWIZARD_TEST_CERTIFICATE,$(if $(filter true,$(USE_AUTOMTIVE_SETUPWIZARD_TEST_CERTIFICATE)),true,false))
 
@@ -491,3 +501,39 @@ $(call soong_config_set_bool,tradefed,use_prebuilt,true)
 else
 $(call soong_config_set_bool,tradefed,use_prebuilt,false)
 endif
+
+$(call soong_config_set,berberis,target_native_bridge_abi,$(TARGET_NATIVE_BRIDGE_ABI))
+
+# Flags for SDK packages
+$(call soong_config_set,sdk,PLATFORM_VERSION,$(PLATFORM_VERSION))
+$(call soong_config_set,sdk,PLATFORM_SDK_VERSION,$(PLATFORM_SDK_VERSION_FULL))
+$(call soong_config_set,sdk,PLATFORM_SDK_EXTENSION_VERSION,$(PLATFORM_SDK_EXTENSION_VERSION))
+$(call soong_config_set,sdk,PLATFORM_IS_BASE_SDK,$(if $(filter $(PLATFORM_SDK_EXTENSION_VERSION),$(PLATFORM_BASE_SDK_EXTENSION_VERSION)),true,false))
+$(call soong_config_set,sdk,PLATFORM_VERSION_CODENAME,$(subst REL,,$(PLATFORM_VERSION_CODENAME)))
+$(call soong_config_set,sdk,PLATFORM_PREVIEW_SDK_VERSION,$(PLATFORM_PREVIEW_SDK_VERSION))
+$(call soong_config_set,sdk,BETA_SDK_VERSION,$(shell if [[ "$(PLATFORM_PREVIEW_SDK_VERSION)" =~ ^[0-9]{4}$$ ]]; then echo "$(PLATFORM_PREVIEW_SDK_VERSION)" | cut -c4 ; fi))
+
+# Flags for SDK plarforms package folder, move from build/core/Makefile
+# The name of the subdir within the platforms dir of the sdk.
+#   if canary build          : android-canary-$PREVIEW_SDK_INT         (android-canary-20250617)
+#   if beta build            : android-$UPCOMING_SDK_INT_FULL-ext$BETA (android-36.1-beta2)
+#   if REL                   : android-$SDK_INT_FULL                   (android-36.1)
+#   if REL with newer SDK ext: android-$SDK_INT_FULL-ext$SDK_EXT       (android-36.1-ext22)
+#   else (internal DEV)      : android-$CODENAME                       (android-CinnamonBun)
+ifeq ($(PLATFORM_VERSION_CODENAME),CANARY)
+sdk_platform_dir_name := android-canary-$(PLATFORM_PREVIEW_SDK_VERSION)
+else ifeq (,$(filter $(PLATFORM_PREVIEW_SDK_VERSION),0 1))
+major := $(shell echo "$(PLATFORM_PREVIEW_SDK_VERSION)" | cut -c 1-2)
+minor := $(shell echo "$(PLATFORM_PREVIEW_SDK_VERSION)" | cut -c 3)
+beta := $(shell echo "$(PLATFORM_PREVIEW_SDK_VERSION)" | cut -c 4)
+sdk_platform_dir_name := android-$(major).$(minor)-beta$(beta)
+else ifeq ($(PLATFORM_VERSION_CODENAME),REL)
+  ifeq ($(PLATFORM_SDK_EXTENSION_VERSION),$(PLATFORM_BASE_SDK_EXTENSION_VERSION))
+    sdk_platform_dir_name := android-$(PLATFORM_SDK_VERSION_FULL)
+  else
+    sdk_platform_dir_name := android-$(PLATFORM_SDK_VERSION_FULL)-ext$(PLATFORM_SDK_EXTENSION_VERSION)
+  endif
+else
+sdk_platform_dir_name := android-$(PLATFORM_VERSION_CODENAME)
+endif
+$(call soong_config_set,sdk,sdk_platform_dir_name,$(sdk_platform_dir_name))

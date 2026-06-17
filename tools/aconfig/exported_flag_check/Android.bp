@@ -1,5 +1,6 @@
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
 }
 
 rust_defaults {
@@ -36,4 +37,9 @@ rust_test_host {
         "tests/finalized-flags.txt",
         "tests/flags.textproto",
     ],
+}
+
+filegroup {
+    name: "non_api_flags_list",
+    srcs: ["non_api_flags_list.txt"],
 }

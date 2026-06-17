@@ -60,7 +60,7 @@ use crate::AconfigStorageError::{
 
 /// The max storage file version from which we can safely read/write. May be
 /// experimental.
-pub const MAX_SUPPORTED_FILE_VERSION: u32 = 3;
+pub const MAX_SUPPORTED_FILE_VERSION: u32 = if cfg!(enable_parse_v4) { 4 } else { 3 } as u32;
 
 /// The newest fully-released version. Unless otherwise specified, this is the
 /// version we will write.
@@ -119,6 +119,9 @@ pub enum StoredFlagType {
     ReadWriteBoolean = 0,
     ReadOnlyBoolean = 1,
     FixedReadOnlyBoolean = 2,
+    ReadWriteInt64 = 3,
+    ReadOnlyInt64 = 4,
+    FixedReadOnlyInt64 = 5,
 }
 
 impl TryFrom<u16> for StoredFlagType {
@@ -129,6 +132,15 @@ impl TryFrom<u16> for StoredFlagType {
             x if x == Self::ReadWriteBoolean as u16 => Ok(Self::ReadWriteBoolean),
             x if x == Self::ReadOnlyBoolean as u16 => Ok(Self::ReadOnlyBoolean),
             x if x == Self::FixedReadOnlyBoolean as u16 => Ok(Self::FixedReadOnlyBoolean),
+            x if cfg!(enable_parse_v4) && x == Self::ReadWriteInt64 as u16 => {
+                Ok(Self::ReadWriteInt64)
+            }
+            x if cfg!(enable_parse_v4) && x == Self::ReadOnlyInt64 as u16 => {
+                Ok(Self::ReadOnlyInt64)
+            }
+            x if cfg!(enable_parse_v4) && x == Self::FixedReadOnlyInt64 as u16 => {
+                Ok(Self::FixedReadOnlyInt64)
+            }
             _ => Err(InvalidStoredFlagType(anyhow!("Invalid stored flag type"))),
         }
     }
@@ -139,6 +151,7 @@ impl TryFrom<u16> for StoredFlagType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FlagValueType {
     Boolean = 0,
+    Int64 = 1,
 }
 
 impl TryFrom<StoredFlagType> for FlagValueType {
@@ -149,6 +162,10 @@ impl TryFrom<StoredFlagType> for FlagValueType {
             StoredFlagType::ReadWriteBoolean => Ok(Self::Boolean),
             StoredFlagType::ReadOnlyBoolean => Ok(Self::Boolean),
             StoredFlagType::FixedReadOnlyBoolean => Ok(Self::Boolean),
+            StoredFlagType::ReadWriteInt64 if cfg!(enable_parse_v4) => Ok(Self::Int64),
+            StoredFlagType::ReadOnlyInt64 if cfg!(enable_parse_v4) => Ok(Self::Int64),
+            StoredFlagType::FixedReadOnlyInt64 if cfg!(enable_parse_v4) => Ok(Self::Int64),
+            _ => Err(InvalidFlagValueType(anyhow!("Invalid flag value type"))),
         }
     }
 }
@@ -159,6 +176,7 @@ impl TryFrom<u16> for FlagValueType {
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             x if x == Self::Boolean as u16 => Ok(Self::Boolean),
+            x if cfg!(enable_parse_v4) && x == Self::Int64 as u16 => Ok(Self::Int64),
             _ => Err(InvalidFlagValueType(anyhow!("Invalid flag value type"))),
         }
     }
@@ -201,6 +219,9 @@ pub enum AconfigStorageError {
     #[error("failed to create file")]
     FileCreationFail(#[source] anyhow::Error),
 
+    #[error("failed to write to file")]
+    FileWriteFail(#[source] anyhow::Error),
+
     #[error("invalid stored flag type")]
     InvalidStoredFlagType(#[source] anyhow::Error),
 
@@ -223,8 +244,7 @@ pub(crate) fn get_bucket_index(val: &[u8], num_buckets: u32) -> u32 {
     let mut s = SipHasher13::new();
     s.write(val);
     s.write_u8(0xff);
-    let ret = (s.finish() % num_buckets as u64) as u32;
-    ret
+    (s.finish() % num_buckets as u64) as u32
 }
 
 /// Read and parse bytes as u8
@@ -262,6 +282,16 @@ pub fn read_u32_from_bytes(buf: &[u8], head: &mut usize) -> Result<u32, AconfigS
             BytesParseFail(anyhow!("fail to parse u32 from bytes: {}", errmsg))
         })?);
     *head += 4;
+    Ok(val)
+}
+
+/// Read and parse bytes as i64
+pub fn read_i64_from_bytes(buf: &[u8], head: &mut usize) -> Result<i64, AconfigStorageError> {
+    let val =
+        i64::from_le_bytes(buf[*head..*head + 8].try_into().map_err(|errmsg| {
+            BytesParseFail(anyhow!("fail to parse i64 from bytes: {}", errmsg))
+        })?);
+    *head += 8;
     Ok(val)
 }
 
@@ -322,20 +352,30 @@ pub fn list_flags(
     let flag_table = FlagTable::from_bytes(&read_file_to_bytes(flag_map)?)?;
     let flag_value_list = FlagValueList::from_bytes(&read_file_to_bytes(flag_val)?)?;
 
-    let mut package_info = vec![("", 0); package_table.header.num_packages as usize];
+    let mut package_info = vec![("", 0, 0); package_table.header.num_packages as usize];
     for node in package_table.nodes.iter() {
-        package_info[node.package_id as usize] = (&node.package_name, node.boolean_start_index);
+        package_info[node.package_id as usize] =
+            (&node.package_name, node.boolean_start_index as usize, node.int_start_index as usize);
     }
 
     let mut flags = Vec::new();
     for node in flag_table.nodes.iter() {
-        let (package_name, boolean_start_index) = package_info[node.package_id as usize];
-        let flag_index = boolean_start_index + node.flag_index as u32;
-        let flag_value = flag_value_list.booleans[flag_index as usize];
+        let (package_name, boolean_start_index, int_start_index) =
+            package_info[node.package_id as usize];
+        let node_flag_index = node.flag_index as usize;
+        let flag_value = match FlagValueType::try_from(node.flag_type)? {
+            FlagValueType::Boolean => {
+                flag_value_list.booleans[boolean_start_index + node_flag_index].to_string()
+            }
+            FlagValueType::Int64 => {
+                flag_value_list.ints[int_start_index + node_flag_index].to_string()
+            }
+        };
+
         flags.push(FlagValueSummary {
             package_name: String::from(package_name),
             flag_name: node.flag_name.clone(),
-            flag_value: flag_value.to_string(),
+            flag_value: flag_value,
             value_type: node.flag_type,
         });
     }
@@ -371,17 +411,31 @@ pub fn list_flags_with_info(
     let flag_value_list = FlagValueList::from_bytes(&read_file_to_bytes(flag_val)?)?;
     let flag_info = FlagInfoList::from_bytes(&read_file_to_bytes(flag_info)?)?;
 
-    let mut package_info = vec![("", 0); package_table.header.num_packages as usize];
+    let mut package_info = vec![("", 0, 0); package_table.header.num_packages as usize];
     for node in package_table.nodes.iter() {
-        package_info[node.package_id as usize] = (&node.package_name, node.boolean_start_index);
+        package_info[node.package_id as usize] =
+            (&node.package_name, node.boolean_start_index as usize, node.int_start_index as usize);
     }
 
     let mut flags = Vec::new();
     for node in flag_table.nodes.iter() {
-        let (package_name, boolean_start_index) = package_info[node.package_id as usize];
-        let flag_index = boolean_start_index + node.flag_index as u32;
-        let flag_value = flag_value_list.booleans[flag_index as usize];
-        let flag_attribute = flag_info.nodes[flag_index as usize].attributes;
+        let (package_name, boolean_start_index, int_start_index) =
+            package_info[node.package_id as usize];
+        let node_flag_index = node.flag_index as usize;
+        let (flag_value, flag_attribute) = match FlagValueType::try_from(node.flag_type)? {
+            FlagValueType::Boolean => {
+                let index = boolean_start_index + node_flag_index;
+                let val = flag_value_list.booleans[index].to_string();
+                let attr = flag_info.boolean_nodes[index].attributes;
+                (val, attr)
+            }
+            FlagValueType::Int64 => {
+                let index = int_start_index + node_flag_index;
+                let val = flag_value_list.ints[index].to_string();
+                let attr = flag_info.int_nodes[index].attributes;
+                (val, attr)
+            }
+        };
         flags.push(FlagValueAndInfoSummary {
             package_name: String::from(package_name),
             flag_name: node.flag_name.clone(),
@@ -498,7 +552,7 @@ pub fn list_flags_cxx(
         },
         Err(errmsg) => ffi::ListFlagValueResultCXX {
             query_success: false,
-            error_message: format!("{:?}", errmsg),
+            error_message: format!("{errmsg:?}"),
             flags: Vec::new(),
         },
     }
@@ -519,7 +573,7 @@ pub fn list_flags_with_info_cxx(
         },
         Err(errmsg) => ffi::ListFlagValueAndInfoResultCXX {
             query_success: false,
-            error_message: format!("{:?}", errmsg),
+            error_message: format!("{errmsg:?}"),
             flags: Vec::new(),
         },
     }
@@ -532,6 +586,9 @@ mod tests {
         create_test_flag_info_list, create_test_flag_table, create_test_flag_value_list,
         create_test_package_table, write_bytes_to_temp_file,
     };
+
+    // TODO(b/439864800): Extend test_list_flag() and test_list_flag_with_info() to
+    // verify v4 storage.
 
     #[test]
     // this test point locks down the flag list api

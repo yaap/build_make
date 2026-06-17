@@ -1,0 +1,114 @@
+package com.android.aconfig.test;
+
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
+/** @hide */
+public class CustomFeatureFlags implements FeatureFlags {
+
+    private BiPredicate<String, Predicate<FeatureFlags>> mGetValueImpl;
+
+    public CustomFeatureFlags(BiPredicate<String, Predicate<FeatureFlags>> getValueImpl) {
+        mGetValueImpl = getValueImpl;
+    }
+
+    @Override
+    public boolean disabledRo() {
+        return getValue(Flags.FLAG_DISABLED_RO,
+            FeatureFlags::disabledRo);
+    }
+
+    @Override
+    public boolean disabledRw() {
+        return getValue(Flags.FLAG_DISABLED_RW,
+            FeatureFlags::disabledRw);
+    }
+
+    @Override
+    public boolean disabledRwExported() {
+        return getValue(Flags.FLAG_DISABLED_RW_EXPORTED,
+            FeatureFlags::disabledRwExported);
+    }
+
+    @Override
+    public boolean disabledRwInOtherNamespace() {
+        return getValue(Flags.FLAG_DISABLED_RW_IN_OTHER_NAMESPACE,
+            FeatureFlags::disabledRwInOtherNamespace);
+    }
+
+    @Override
+    public boolean enabledFixedRo() {
+        return getValue(Flags.FLAG_ENABLED_FIXED_RO,
+            FeatureFlags::enabledFixedRo);
+    }
+
+    @Override
+    public boolean enabledFixedRoExported() {
+        return getValue(Flags.FLAG_ENABLED_FIXED_RO_EXPORTED,
+            FeatureFlags::enabledFixedRoExported);
+    }
+
+    @Override
+    public boolean enabledRo() {
+        return getValue(Flags.FLAG_ENABLED_RO,
+            FeatureFlags::enabledRo);
+    }
+
+    @Override
+    public boolean enabledRoExported() {
+        return getValue(Flags.FLAG_ENABLED_RO_EXPORTED,
+            FeatureFlags::enabledRoExported);
+    }
+
+    @Override
+    public boolean enabledRw() {
+        return getValue(Flags.FLAG_ENABLED_RW,
+            FeatureFlags::enabledRw);
+    }
+
+    public boolean isFlagReadOnlyOptimized(String flagName) {
+        if (mReadOnlyFlagsSet.contains(flagName) &&
+            isOptimizationEnabled()) {
+                return true;
+        }
+        return false;
+    }
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    private boolean isOptimizationEnabled() {
+        return false;
+    }
+
+    protected boolean getValue(String flagName, Predicate<FeatureFlags> getter) {
+        return mGetValueImpl.test(flagName, getter);
+    }
+
+    public List<String> getFlagNames() {
+        return Arrays.asList(
+            Flags.FLAG_DISABLED_RO,
+            Flags.FLAG_DISABLED_RW,
+            Flags.FLAG_DISABLED_RW_EXPORTED,
+            Flags.FLAG_DISABLED_RW_IN_OTHER_NAMESPACE,
+            Flags.FLAG_ENABLED_FIXED_RO,
+            Flags.FLAG_ENABLED_FIXED_RO_EXPORTED,
+            Flags.FLAG_ENABLED_RO,
+            Flags.FLAG_ENABLED_RO_EXPORTED,
+            Flags.FLAG_ENABLED_RW
+        );
+    }
+
+    private Set<String> mReadOnlyFlagsSet = new HashSet<>(
+        Arrays.asList(
+            Flags.FLAG_DISABLED_RO,
+            Flags.FLAG_ENABLED_FIXED_RO,
+            Flags.FLAG_ENABLED_FIXED_RO_EXPORTED,
+            Flags.FLAG_ENABLED_RO,
+            Flags.FLAG_ENABLED_RO_EXPORTED,
+            ""
+        )
+    );
+}

@@ -1,0 +1,36 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+rust_defaults {
+    name: "unpack-module-sdks-defaults",
+    edition: "2021",
+    clippy_lints: "android",
+    lints: "android",
+    use_expansive_default_srcs: false,
+    rustlibs: [
+        "libanyhow",
+        "libclap",
+        "libglob",
+        "libregex",
+        "libserde",
+        "libserde_json",
+        "libzip",
+    ],
+    crate_root: "src/main.rs",
+}
+
+rust_binary_host {
+    name: "unpack-module-sdks",
+    defaults: ["unpack-module-sdks-defaults"],
+    srcs: ["src/*.rs"],
+}
+
+rust_test_host {
+    name: "unpack-module-sdks-test",
+    defaults: ["unpack-module-sdks-defaults"],
+    srcs: [
+        "src/*.rs",
+    ],
+    test_suites: ["general-tests"],
+}

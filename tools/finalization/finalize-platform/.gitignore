@@ -1,0 +1,5 @@
+# undo some of the patterns in this project's top level .gitignore: the patches
+# dir may hold directories otherwise ignored
+!blueprint
+!kati
+!soong

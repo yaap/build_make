@@ -28,6 +28,7 @@ import (
 )
 
 type ExecutionMode int
+
 const (
 	ExecutionModeRbc ExecutionMode = iota
 	ExecutionModeScl ExecutionMode = iota
@@ -46,7 +47,7 @@ type modentry struct {
 var moduleCache = make(map[string]*modentry)
 
 var rbcBuiltins starlark.StringDict = starlark.StringDict{
-	"struct":   starlark.NewBuiltin("struct", starlarkstruct.Make),
+	"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 	// To convert find-copy-subdir and product-copy-files-by pattern
 	"rblf_find_files": starlark.NewBuiltin("rblf_find_files", find),
 	// To convert makefile's $(shell cmd)
@@ -58,12 +59,12 @@ var rbcBuiltins starlark.StringDict = starlark.StringDict{
 }
 
 var sclBuiltins starlark.StringDict = starlark.StringDict{
-	"struct":   starlark.NewBuiltin("struct", starlarkstruct.Make),
+	"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 }
 
 func isSymlink(filepath string) (bool, error) {
 	if info, err := os.Lstat(filepath); err == nil {
-		return info.Mode() & os.ModeSymlink != 0, nil
+		return info.Mode()&os.ModeSymlink != 0, nil
 	} else {
 		return false, err
 	}
@@ -117,7 +118,9 @@ func cleanModuleName(moduleName string, callerDir string, allowExternalPaths boo
 }
 
 // loader implements load statement. The format of the loaded module URI is
-//  [//path]:base[|symbol]
+//
+//	[//path]:base[|symbol]
+//
 // The file path is $ROOT/path/base if path is present, <caller_dir>/base otherwise.
 // The presence of `|symbol` indicates that the loader should return a single 'symbol'
 // bound to None if file is missing.
@@ -340,10 +343,11 @@ func log(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 
 // Parses, resolves, and executes a Starlark file.
 // filename and src parameters are as for starlark.ExecFile:
-// * filename is the name of the file to execute,
-//   and the name that appears in error messages;
-// * src is an optional source of bytes to use instead of filename
-//   (it can be a string, or a byte array, or an io.Reader instance)
+//   - filename is the name of the file to execute,
+//     and the name that appears in error messages;
+//   - src is an optional source of bytes to use instead of filename
+//     (it can be a string, or a byte array, or an io.Reader instance)
+//
 // Returns the top-level starlark variables, the list of starlark files loaded, and an error
 func Run(filename string, src interface{}, mode ExecutionMode, allowExternalEntrypoint bool) (starlark.StringDict, []string, error) {
 	// NOTE(asmundak): OS-specific. Behave similar to Linux `system` call,
@@ -354,7 +358,7 @@ func Run(filename string, src interface{}, mode ExecutionMode, allowExternalEntr
 	}
 
 	mainThread := &starlark.Thread{
-		Name:  "main",
+		Name: "main",
 		Print: func(_ *starlark.Thread, msg string) {
 			if mode == ExecutionModeRbc {
 				// In rbc mode, rblf_log is used to print to stderr
@@ -363,7 +367,7 @@ func Run(filename string, src interface{}, mode ExecutionMode, allowExternalEntr
 				fmt.Fprintln(os.Stderr, msg)
 			}
 		},
-		Load:  loader,
+		Load: loader,
 	}
 	filename, err := filepath.Abs(filename)
 	if err != nil {

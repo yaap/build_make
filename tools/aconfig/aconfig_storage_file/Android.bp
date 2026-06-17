@@ -1,5 +1,6 @@
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
 }
 
 rust_defaults {
@@ -15,6 +16,10 @@ rust_defaults {
         "libaconfig_storage_protos",
         "libserde",
     ],
+    cfgs: select(release_flag("RELEASE_ACONFIG_PARSE_V4"), {
+        true: ["enable_parse_v4"],
+        default: [],
+    }),
 }
 
 rust_library {
@@ -30,6 +35,11 @@ rust_library {
     min_sdk_version: "29",
     vendor_available: true,
     product_available: true,
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
 }
 
 rust_library {
@@ -51,7 +61,7 @@ rust_binary_host {
     defaults: ["aconfig_storage_file.defaults"],
     srcs: ["src/main.rs"],
     rustlibs: [
-        "libaconfig_storage_file",
+        "libaconfig_storage_file_with_test_utils",
         "libserde_json",
     ],
 }
@@ -64,6 +74,25 @@ rust_test_host {
     rustlibs: [
         "libtempfile",
     ],
+    data: [
+        ":test_storage_files",
+    ],
+}
+
+// For having unit test coverage when the v4 parse flag is enabled.
+// This can be removed / flipped after we start to rollout that flag.
+rust_test_host {
+    name: "aconfig_storage_file.test.v4_enabled",
+    test_suites: ["general-tests"],
+    defaults: ["aconfig_storage_file.defaults"],
+    srcs: ["src/lib.rs"],
+    rustlibs: [
+        "libtempfile",
+    ],
+    data: [
+        ":test_storage_files",
+    ],
+    cfgs: ["enable_parse_v4"],
 }
 
 rust_protobuf {
@@ -79,6 +108,11 @@ rust_protobuf {
     min_sdk_version: "29",
     vendor_available: true,
     product_available: true,
+    target: {
+        windows: {
+            enabled: true,
+        },
+    },
 }
 
 cc_library {

@@ -150,7 +150,7 @@ files {
             storage_record_pb::get_binary_proto_from_text_proto(text_proto).unwrap();
         let err = storage_record_pb::try_from_binary_proto(&binary_proto_bytes).unwrap_err();
         assert_eq!(
-            format!("{:?}", err),
+            err.to_string(),
             "invalid storage file record: missing package map file for container system"
         );
 
@@ -168,7 +168,7 @@ files {
             storage_record_pb::get_binary_proto_from_text_proto(text_proto).unwrap();
         let err = storage_record_pb::try_from_binary_proto(&binary_proto_bytes).unwrap_err();
         assert_eq!(
-            format!("{:?}", err),
+            err.to_string(),
             "invalid storage file record: missing flag map file for container system"
         );
 
@@ -186,7 +186,7 @@ files {
             storage_record_pb::get_binary_proto_from_text_proto(text_proto).unwrap();
         let err = storage_record_pb::try_from_binary_proto(&binary_proto_bytes).unwrap_err();
         assert_eq!(
-            format!("{:?}", err),
+            err.to_string(),
             "invalid storage file record: missing flag val file for container system"
         );
     }

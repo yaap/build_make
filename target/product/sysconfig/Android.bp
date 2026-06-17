@@ -24,6 +24,20 @@ prebuilt_etc {
 }
 
 prebuilt_etc {
+    name: "preinstalled-packages-platform-hsu-as-login.xml",
+    product_specific: true,
+    sub_dir: "sysconfig",
+    src: "preinstalled-packages-platform-hsu-as-login.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-desktop-common.xml",
+    product_specific: true,
+    sub_dir: "sysconfig",
+    src: "preinstalled-packages-desktop-common.xml",
+}
+
+prebuilt_etc {
     name: "preinstalled-packages-platform-full-base.xml",
     sub_dir: "sysconfig",
     src: "preinstalled-packages-platform-full-base.xml",
@@ -67,4 +81,51 @@ prebuilt_etc {
     product_specific: true,
     sub_dir: "sysconfig",
     src: "initial-package-stopped-states-aosp.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-media-system.xml",
+    sub_dir: "sysconfig",
+    src: "preinstalled-packages-media-system.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-platform-telephony-system-ext.xml",
+    sub_dir: "sysconfig",
+    system_ext_specific: true,
+    src: "preinstalled-packages-platform-telephony-system-ext.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-media-product.xml",
+    product_specific: true,
+    sub_dir: "sysconfig",
+    src: "preinstalled-packages-media-product.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-media-system-ext.xml",
+    sub_dir: "sysconfig",
+    system_ext_specific: true,
+    src: "preinstalled-packages-media-system-ext.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-platform-telephony-system.xml",
+    sub_dir: "sysconfig",
+    src: "preinstalled-packages-platform-telephony-system.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-telephony-system-ext.xml",
+    sub_dir: "sysconfig",
+    system_ext_specific: true,
+    src: "preinstalled-packages-telephony-system-ext.xml",
+}
+
+prebuilt_etc {
+    name: "preinstalled-packages-base-product.xml",
+    sub_dir: "sysconfig",
+    product_specific: true,
+    src: "preinstalled-packages-base-product.xml",
 }

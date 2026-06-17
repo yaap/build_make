@@ -77,7 +77,8 @@ $(call dist-for-goals,layoutlib,$(LAYOUTLIB_BUILD_PROP)/layoutlib-build.prop:lay
 LAYOUTLIB_RES := $(call intermediates-dir-for,PACKAGING,layoutlib-res,HOST,COMMON)
 LAYOUTLIB_RES_FILES := $(shell find frameworks/base/core/res/res -type f -not -path 'frameworks/base/core/res/res/values-m[nc]c*' | sort)
 EMULATED_OVERLAYS_FILES := $(shell find frameworks/base/packages/overlays/*/res/ | sort)
-LAYOUTLIB_SUPPORTED_DEVICES := raviole/oriole raviole/raven bluejay/bluejay pantah/panther pantah/cheetah lynx/lynx felix/felix shusky/shiba shusky/husky akita/akita caimito/tokay caimito/caiman caimito/komodo comet/comet tangorpro/tangorpro
+LAYOUTLIB_SUPPORTED_DEVICES := raviole/oriole raviole/raven bluejay/bluejay pantah/panther pantah/cheetah lynx/lynx felix/felix shusky/shiba shusky/husky \
+	akita/akita caimito/tokay caimito/caiman caimito/komodo comet/comet tangorpro/tangorpro tegu/tegu muzel/blazer muzel/frankel muzel/mustang rango/rango
 LAYOUTLIB_DEVICE_OVERLAYS_FILES := $(addsuffix /overlay/frameworks/base/core/res/res/values/*, $(addprefix device/google/, $(LAYOUTLIB_SUPPORTED_DEVICES)))
 LAYOUTLIB_DEVICE_OVERLAYS_FILES := $(shell find $(LAYOUTLIB_DEVICE_OVERLAYS_FILES) 2>/dev/null | sort)
 $(LAYOUTLIB_RES)/layoutlib-res.zip: $(SOONG_ZIP) $(HOST_OUT_EXECUTABLES)/aapt2 $(LAYOUTLIB_RES_FILES) $(EMULATED_OVERLAYS_FILES) $(LAYOUTLIB_DEVICE_OVERLAYS_FILES) frameworks/layoutlib/overlay_codenames.txt

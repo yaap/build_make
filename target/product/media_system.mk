@@ -36,6 +36,9 @@ PRODUCT_PACKAGES += \
     make_f2fs \
     requestsync \
 
+# Allowlist for system packages included in media_system.mk
+PRODUCT_PACKAGES += preinstalled-packages-media-system.xml
+
 ifeq ($(RELEASE_PACKAGE_COMPUTER_CONTROL),true)
   PRODUCT_PACKAGES += VirtualDeviceManager
 endif
@@ -55,10 +58,6 @@ PRODUCT_SYSTEM_SERVER_JARS := \
 
 PRODUCT_COPY_FILES += \
     system/core/rootdir/etc/public.libraries.android.txt:system/etc/public.libraries.txt
-
-# Enable boot.oat filtering of compiled classes to reduce boot.oat size. b/28026683
-PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
-    frameworks/base/config/compiled-classes-phone:system/etc/compiled-classes)
 
 # On userdebug builds, collect more tombstones by default.
 ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))

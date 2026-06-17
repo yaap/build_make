@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# Copyright (C) 2025 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -ex
+
+# This script will verify the SDK build. Point it to the out/dist folder of an sdk build by passing it as a flag.
+# If run locally it will pick up whatever 'lunch' target is set, and if one isn't set then it will default to `sdk-sdk_finalization-userdebug`
+
+source "$(dirname "$0")"/common.sh
+
+dist_path="$top/out/dist"
+max_sdk_version="37" # This should be read from the release configuration.
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --dist_path)
+            dist_path="$2"
+            shift # past argument
+            shift # past value
+            ;;
+        --max-sdk-version)
+            max_sdk_version="$2"
+            shift # past argument
+            shift # past value
+            ;;
+        *)
+            shift # past argument
+            ;;
+    esac
+done
+
+# Build sdk-artifact-verifier binary.
+m sdk-artifact-verifier
+
+# Verify that api-version.xml is internally consistent
+ sdk-artifact-verifier \
+    --api-versions-path "$dist_path/data/api-versions.xml" \
+    --deprecated-at-birth-allowlist-path "$top/build/make/tools/finalization/sdk-artifact-verifier/deprecated_at_birth_allowlist.txt" \
+    --max-sdk-version-full "$max_sdk_version"

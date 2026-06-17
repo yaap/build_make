@@ -139,11 +139,6 @@ static FLAG_VAL_MAP: LazyLock<Result<Mmap, AconfigStorageError>> = LazyLock::new
 
 /// flag value cache for disabled_rw
 static CACHED_disabled_rw: LazyLock<bool> = LazyLock::new(|| {
-    // This will be called multiple times. Subsequent calls after the first are noops.
-    logger::init(
-        logger::Config::default()
-            .with_tag_on_device("aconfig_rust_codegen")
-            .with_max_level(LevelFilter::Info));
 
     let flag_value_result = FLAG_VAL_MAP
         .as_ref()
@@ -179,11 +174,6 @@ static CACHED_disabled_rw: LazyLock<bool> = LazyLock::new(|| {
 
 /// flag value cache for disabled_rw_exported
 static CACHED_disabled_rw_exported: LazyLock<bool> = LazyLock::new(|| {
-        // This will be called multiple times. Subsequent calls after the first are noops.
-        logger::init(
-            logger::Config::default()
-                .with_tag_on_device("aconfig_rust_codegen")
-                .with_max_level(LevelFilter::Info));
 
         let flag_value_result = FLAG_VAL_MAP
             .as_ref()
@@ -219,11 +209,6 @@ static CACHED_disabled_rw_exported: LazyLock<bool> = LazyLock::new(|| {
 
 /// flag value cache for disabled_rw_in_other_namespace
 static CACHED_disabled_rw_in_other_namespace: LazyLock<bool> = LazyLock::new(|| {
-        // This will be called multiple times. Subsequent calls after the first are noops.
-        logger::init(
-            logger::Config::default()
-                .with_tag_on_device("aconfig_rust_codegen")
-                .with_max_level(LevelFilter::Info));
 
         let flag_value_result = FLAG_VAL_MAP
             .as_ref()
@@ -260,11 +245,6 @@ static CACHED_disabled_rw_in_other_namespace: LazyLock<bool> = LazyLock::new(|| 
 
 /// flag value cache for enabled_rw
 static CACHED_enabled_rw: LazyLock<bool> = LazyLock::new(|| {
-        // This will be called multiple times. Subsequent calls after the first are noops.
-        logger::init(
-            logger::Config::default()
-                .with_tag_on_device("aconfig_rust_codegen")
-                .with_max_level(LevelFilter::Info));
 
         let flag_value_result = FLAG_VAL_MAP
             .as_ref()
@@ -433,11 +413,6 @@ static FLAG_VAL_MAP: LazyLock<Result<Mmap, AconfigStorageError>> = LazyLock::new
 
 /// flag value cache for disabled_rw
 static CACHED_disabled_rw: LazyLock<bool> = LazyLock::new(|| {
-    // This will be called multiple times. Subsequent calls after the first are noops.
-    logger::init(
-        logger::Config::default()
-            .with_tag_on_device("aconfig_rust_codegen")
-            .with_max_level(LevelFilter::Info));
 
     let flag_value_result = FLAG_VAL_MAP
         .as_ref()
@@ -473,11 +448,6 @@ static CACHED_disabled_rw: LazyLock<bool> = LazyLock::new(|| {
 
 /// flag value cache for disabled_rw_exported
 static CACHED_disabled_rw_exported: LazyLock<bool> = LazyLock::new(|| {
-        // This will be called multiple times. Subsequent calls after the first are noops.
-        logger::init(
-            logger::Config::default()
-                .with_tag_on_device("aconfig_rust_codegen")
-                .with_max_level(LevelFilter::Info));
 
         let flag_value_result = FLAG_VAL_MAP
             .as_ref()
@@ -513,11 +483,6 @@ static CACHED_disabled_rw_exported: LazyLock<bool> = LazyLock::new(|| {
 
 /// flag value cache for disabled_rw_in_other_namespace
 static CACHED_disabled_rw_in_other_namespace: LazyLock<bool> = LazyLock::new(|| {
-        // This will be called multiple times. Subsequent calls after the first are noops.
-        logger::init(
-            logger::Config::default()
-                .with_tag_on_device("aconfig_rust_codegen")
-                .with_max_level(LevelFilter::Info));
 
         let flag_value_result = FLAG_VAL_MAP
             .as_ref()
@@ -554,11 +519,6 @@ static CACHED_disabled_rw_in_other_namespace: LazyLock<bool> = LazyLock::new(|| 
 
 /// flag value cache for enabled_rw
 static CACHED_enabled_rw: LazyLock<bool> = LazyLock::new(|| {
-        // This will be called multiple times. Subsequent calls after the first are noops.
-        logger::init(
-            logger::Config::default()
-                .with_tag_on_device("aconfig_rust_codegen")
-                .with_max_level(LevelFilter::Info));
 
         let flag_value_result = FLAG_VAL_MAP
             .as_ref()

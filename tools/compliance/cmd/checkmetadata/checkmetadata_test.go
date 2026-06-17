@@ -71,8 +71,8 @@ func Test(t *testing.T) {
 			expectedStdout: "PASS -- parsed 1 project metadata files for 1 projects",
 		},
 		{
-			name:           "1p+notice+reciprocal+restricted",
-			projects:       []string{
+			name: "1p+notice+reciprocal+restricted",
+			projects: []string{
 				"firstparty",
 				"notice",
 				"reciprocal",
@@ -86,8 +86,8 @@ func Test(t *testing.T) {
 			expectedStdout: "PASS -- parsed 1 project metadata files for 1 projects",
 		},
 		{
-			name:           "1p+notice+reciprocal+restricted+proprietary",
-			projects:       []string{
+			name: "1p+notice+reciprocal+restricted+proprietary",
+			projects: []string{
 				"firstparty",
 				"notice",
 				"reciprocal",
@@ -102,8 +102,8 @@ func Test(t *testing.T) {
 			expectedStdout: "PASS -- parsed 0 project metadata files for 1 projects",
 		},
 		{
-			name:           "1p+notice+reciprocal+restricted+proprietary+missing1",
-			projects:       []string{
+			name: "1p+notice+reciprocal+restricted+proprietary+missing1",
+			projects: []string{
 				"firstparty",
 				"notice",
 				"reciprocal",
@@ -119,8 +119,8 @@ func Test(t *testing.T) {
 			expectedStdout: "PASS -- parsed 0 project metadata files for 1 projects",
 		},
 		{
-			name:           "1p+notice+reciprocal+restricted+proprietary+missing1+missing2",
-			projects:       []string{
+			name: "1p+notice+reciprocal+restricted+proprietary+missing1+missing2",
+			projects: []string{
 				"firstparty",
 				"notice",
 				"reciprocal",
@@ -132,8 +132,8 @@ func Test(t *testing.T) {
 			expectedStdout: "PASS -- parsed 5 project metadata files for 7 projects",
 		},
 		{
-			name:           "missing2+1p+notice+reciprocal+restricted+proprietary+missing1",
-			projects:       []string{
+			name: "missing2+1p+notice+reciprocal+restricted+proprietary+missing1",
+			projects: []string{
 				"regressgpl2",
 				"firstparty",
 				"notice",
@@ -145,8 +145,8 @@ func Test(t *testing.T) {
 			expectedStdout: "PASS -- parsed 5 project metadata files for 7 projects",
 		},
 		{
-			name:           "missing2+1p+notice+missing1+reciprocal+restricted+proprietary",
-			projects:       []string{
+			name: "missing2+1p+notice+missing1+reciprocal+restricted+proprietary",
+			projects: []string{
 				"regressgpl2",
 				"firstparty",
 				"notice",

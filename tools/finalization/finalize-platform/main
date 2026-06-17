@@ -1,0 +1,165 @@
+#!/bin/bash
+#
+# Copyright (C) 2026 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# finalize-platform is a tool used to finalize the platform APIs ahead of
+# release of a new Android version. The finalization process is broken down
+# into several finalize-* steps where some steps depend on earlier steps:
+#
+#     mainline_module_sdks    finalize-resources    finalize-ndk
+#              |                      |                |
+#              v                      |                |
+#     finalize-module-sdks            |                |
+#                       |             |                |
+#                       v             v                |
+#                    finalize-platform-sdk             |
+#                               |                      |
+#                               v                      v
+#                               finalize-release-configs
+#                                          |
+#                                          v
+#                                      (all done)
+set -ex
+source "$(dirname "$0")"/common.sh
+source "$(dirname "$0")"/config.sh
+
+function require_arg() {
+    local arg="$1"
+    local value="${!2}"
+    if [[ -z "$value" ]]; then
+        error "missing $arg <value>"
+        exit 1
+    fi
+}
+
+command="$1"
+if [[ -z "$command" ]]; then
+    error "missing command"
+    exit 1
+fi
+shift
+
+patch_dir=""
+mainline_sdks_dir=""
+build_server_target=""
+build_server_id=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --patch-dir)
+            if [[ -z "$2" ]]; then
+                error "--patch-dir: missing <value>"
+                exit 1
+            fi
+            patch_dir="$(readlink -m "$2")"
+            shift 2
+            ;;
+        --mainline-sdks-dir)
+            if [[ -z "$2" ]]; then
+                error "--mainline-sdks-dir: missing <value>"
+                exit 1
+            fi
+            mainline_sdks_dir="$(readlink -f "$2")"
+            shift 2
+            ;;
+        --build-server-target)
+            if [[ -z "$2" ]]; then
+                error "--build-server-target: missing <value>"
+                exit 1
+            fi
+            build_server_target="$2"
+            shift 2
+            ;;
+        --build-server-id)
+            if [[ -z "$2" ]]; then
+                error "--build-server-id: missing <value>"
+                exit 1
+            fi
+            build_server_id="$2"
+            shift 2
+            ;;
+        *)
+            error "unexpected argument $1"
+            exit 1
+            ;;
+    esac
+done
+
+case "$command" in
+    # individual finalize steps
+    finalize-module-sdks)
+        source "$(dirname "$0")"/finalize-module-sdks.sh
+        ;;
+    finalize-resources)
+        source "$(dirname "$0")"/finalize-resources.sh
+        ;;
+    finalize-ndk)
+        source "$(dirname "$0")"/finalize-ndk.sh
+        ;;
+    finalize-platform-sdk)
+        source "$(dirname "$0")"/finalize-platform-sdk.sh
+        ;;
+    finalize-release-configs)
+        source "$(dirname "$0")"/finalize-release-configs.sh
+        ;;
+
+    # finalization steps, including any previous steps
+    finalize-module-sdks-with-deps)
+        source "$(dirname "$0")"/finalize-module-sdks.sh
+        ;;
+    finalize-resources-with-deps)
+        source "$(dirname "$0")"/finalize-resources.sh
+        ;;
+    finalize-ndk-with-deps)
+        source "$(dirname "$0")"/finalize-ndk.sh
+        ;;
+    finalize-platform-sdk-with-deps)
+        source "$(dirname "$0")"/finalize-module-sdks.sh
+        source "$(dirname "$0")"/finalize-resources.sh
+        source "$(dirname "$0")"/finalize-platform-sdk.sh
+        ;;
+    finalize-release-configs-with-deps)
+        source "$(dirname "$0")"/finalize-module-sdks.sh
+        source "$(dirname "$0")"/finalize-resources.sh
+        source "$(dirname "$0")"/finalize-platform-sdk.sh
+        source "$(dirname "$0")"/finalize-ndk.sh
+        source "$(dirname "$0")"/finalize-release-configs.sh
+        ;;
+
+    re-finalize-platform-sdk-with-deps)
+        source "$(dirname "$0")"/re-finalize-platform-sdk-with-deps.sh
+        ;;
+
+    # special commands
+    download-patches)
+        require_arg "--patch-dir" "patch_dir"
+        require_arg "--build-server-target" "build_server_target"
+        download_patches_to_patchdir "$patch_dir" "$build_server_target" "$build_server_id"
+        ;;
+    apply-patches)
+        require_arg "--patch-dir" "patch_dir"
+        apply_patches_from_patchdir "$patch_dir"
+        ;;
+    format-patches)
+        require_arg "--patch-dir" "patch_dir"
+        format_patches_into_patchdir "$patch_dir"
+        ;;
+    setup-build-server)
+        setup_build_server
+        ;;
+    *)
+        error "unexpected command: $command"
+        exit 1
+        ;;
+esac

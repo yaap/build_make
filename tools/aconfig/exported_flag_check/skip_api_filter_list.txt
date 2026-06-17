@@ -8,3 +8,6 @@ com.android.settingslib.widget.theme.flags.is_expressive_design_enabled
 
 // This flag is used to guard wear devices API
 com.google.android.clockwork.pele.flags.koru_feature_cached_views
+
+// See b/463706609
+android.permission.flags.skin_temp_oxygen_saturation_health_services_pregrant_enabled

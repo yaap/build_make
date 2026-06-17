@@ -25,7 +25,6 @@ ADDITIONAL_VENDOR_PROPERTIES += ro.bionic.cpu_variant=$(TARGET_CPU_VARIANT_RUNTI
 ADDITIONAL_VENDOR_PROPERTIES += ro.bionic.2nd_arch=$(TARGET_2ND_ARCH)
 ADDITIONAL_VENDOR_PROPERTIES += ro.bionic.2nd_cpu_variant=$(TARGET_2ND_CPU_VARIANT_RUNTIME)
 
-ADDITIONAL_VENDOR_PROPERTIES += persist.sys.dalvik.vm.lib.2=libart.so
 ADDITIONAL_VENDOR_PROPERTIES += dalvik.vm.isa.$(TARGET_ARCH).variant=$(DEX2OAT_TARGET_CPU_VARIANT_RUNTIME)
 ifneq ($(DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES),)
   ADDITIONAL_VENDOR_PROPERTIES += dalvik.vm.isa.$(TARGET_ARCH).features=$(DEX2OAT_TARGET_INSTRUCTION_SET_FEATURES)
@@ -139,6 +138,17 @@ endif
 
 ifeq ($(AB_OTA_UPDATER),true)
 ADDITIONAL_VENDOR_PROPERTIES += ro.vendor.build.ab_ota_partitions=$(subst $(space),$(comma),$(sort $(AB_OTA_PARTITIONS)))
+endif
+
+# Add the 16K developer args if it is defined for the product.
+ifneq (,$(filter true,$(PRODUCT_16K_DEVELOPER_OPTION)))
+ADDITIONAL_VENDOR_PROPERTIES += \
+    ro.product.build.16k_page.enabled=true \
+
+else
+ADDITIONAL_VENDOR_PROPERTIES += \
+    ro.product.build.16k_page.enabled=false \
+
 endif
 
 user_variant := $(filter user userdebug,$(TARGET_BUILD_VARIANT))

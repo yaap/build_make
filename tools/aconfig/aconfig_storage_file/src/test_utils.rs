@@ -27,13 +27,14 @@ use tempfile::NamedTempFile;
 
 pub fn create_test_package_table(version: u32) -> PackageTable {
     let header = PackageTableHeader {
-        version: version,
+        version,
         container: String::from("mockup"),
         file_type: StorageFileType::PackageMap as u8,
         file_size: match version {
-            1 => 209,
-            2 => 233,
-            3 => 236,
+            1 => 209, // 31(header)+7*4(buckets)+3*50(nodes)
+            2 => 233, // 31(header)+7*4(buckets)+3*58(nodes, +8 for fingerprint)
+            3 => 236, // 31(header)+7*4(buckets)+3*59(nodes, +1 for redaction)
+            4 => 248, // 31(header)+7*4(buckets)+3*63(nodes, +4 for int offset)
             _ => panic!("Unsupported version."),
         },
         num_packages: 3,
@@ -44,6 +45,7 @@ pub fn create_test_package_table(version: u32) -> PackageTable {
         1 => vec![Some(59), None, None, Some(109), None, None, None],
         2 => vec![Some(59), None, None, Some(117), None, None, None],
         3 => vec![Some(59), None, None, Some(118), None, None, None],
+        4 => vec![Some(59), None, None, Some(122), None, None, None],
         _ => panic!("Unsupported version."),
     };
     let first_node = PackageTableNode {
@@ -51,15 +53,22 @@ pub fn create_test_package_table(version: u32) -> PackageTable {
         package_id: 1,
         fingerprint: match version {
             1 => 0,
-            2..=3 => 4431940502274857964u64,
+            2..=4 => 4431940502274857964u64,
             _ => panic!("Unsupported version."),
         },
         redact_exported_reads: match version {
-            1..=2 => false,
-            3 => true,
+            1..=4 => false,
             _ => panic!("unsupported version."),
         },
         boolean_start_index: 3,
+        int_start_index: match version {
+            1..=3 => 0,
+            // TODO(b/439864800): This is a random value now. Add test to verify
+            // the index logic and use the value matching flag map and value
+            // files.
+            4 => 6,
+            _ => panic!("unsupported version."),
+        },
         next_offset: None,
     };
     let second_node = PackageTableNode {
@@ -67,19 +76,28 @@ pub fn create_test_package_table(version: u32) -> PackageTable {
         package_id: 0,
         fingerprint: match version {
             1 => 0,
-            2..=3 => 15248948510590158086u64,
+            2..=4 => 15248948510590158086u64,
             _ => panic!("Unsupported version."),
         },
         redact_exported_reads: match version {
             1..=2 => false,
-            3 => true,
+            3..=4 => true,
             _ => panic!("unsupported version."),
         },
         boolean_start_index: 0,
+        int_start_index: match version {
+            1..=3 => 0,
+            // TODO(b/439864800): This is a random value now. Add test to verify
+            // the index logic and use the value matching flag map and value
+            // files.
+            4 => 18,
+            _ => panic!("unsupported version."),
+        },
         next_offset: match version {
             1 => Some(159),
             2 => Some(175),
             3 => Some(177),
+            4 => Some(185),
             _ => panic!("Unsupported version."),
         },
     };
@@ -88,15 +106,23 @@ pub fn create_test_package_table(version: u32) -> PackageTable {
         package_id: 2,
         fingerprint: match version {
             1 => 0,
-            2..=3 => 16233229917711622375u64,
+            2..=4 => 16233229917711622375u64,
             _ => panic!("Unsupported version."),
         },
         redact_exported_reads: match version {
             1..=2 => false,
-            3 => true,
+            3..=4 => true,
             _ => panic!("unsupported version."),
         },
         boolean_start_index: 6,
+        int_start_index: match version {
+            1..=3 => 0,
+            // TODO(b/439864800): This is a random value now. Add test to verify
+            // the index logic and use the value matching flag map and value
+            // files.
+            4 => 29,
+            _ => panic!("unsupported version."),
+        },
         next_offset: None,
     };
     let nodes = vec![first_node, second_node, third_node];
@@ -124,7 +150,7 @@ impl FlagTableNode {
 
 pub fn create_test_flag_table(version: u32) -> FlagTable {
     let header = FlagTableHeader {
-        version: version,
+        version,
         container: String::from("mockup"),
         file_type: StorageFileType::FlagMap as u8,
         file_size: 321,
@@ -166,36 +192,83 @@ pub fn create_test_flag_table(version: u32) -> FlagTable {
 
 pub fn create_test_flag_value_list(version: u32) -> FlagValueList {
     let header = FlagValueHeader {
-        version: version,
+        version,
         container: String::from("mockup"),
         file_type: StorageFileType::FlagVal as u8,
-        file_size: 35,
-        num_flags: 8,
-        boolean_value_offset: 27,
+        file_size: match version {
+            1..=3 => 35,
+            4 => 107,
+            _ => panic!("Unsupported version."),
+        },
+        num_boolean_flags: 8,
+        boolean_value_offset: match version {
+            1..=3 => 27,
+            4 => 35,
+            _ => panic!("Unsupported version."),
+        },
+        num_int_flags: match version {
+            1..=3 => 0,
+            4 => 8,
+            _ => panic!("Unsupported version."),
+        },
+        int_value_offset: match version {
+            1..=3 => 0,
+            4 => 43,
+            _ => panic!("Unsupported version."),
+        },
     };
     let booleans: Vec<bool> = vec![false, true, true, false, true, true, true, true];
-    FlagValueList { header, booleans }
+    let ints: Vec<i64> = match version {
+        1..=3 => vec![],
+        4 => vec![0, 1, 2, 3, 4, 5, 6, 7],
+        _ => panic!("Unsupported version."),
+    };
+    FlagValueList { header, booleans, ints }
 }
 
 pub fn create_test_flag_info_list(version: u32) -> FlagInfoList {
     let header = FlagInfoHeader {
-        version: version,
+        version,
         container: String::from("mockup"),
         file_type: StorageFileType::FlagInfo as u8,
-        file_size: 35,
-        num_flags: 8,
-        boolean_flag_offset: 27,
+        file_size: match version {
+            1..=3 => 35,
+            4 => 51,
+            _ => panic!("Unsupported version."),
+        },
+        num_boolean_flags: 8,
+        boolean_flag_offset: match version {
+            1..=3 => 27,
+            4 => 35,
+            _ => panic!("Unsupported version."),
+        },
+        num_int_flags: match version {
+            1..=3 => 0,
+            4 => 8,
+            _ => panic!("Unsupported version."),
+        },
+        int_flag_offset: match version {
+            1..=3 => 0,
+            4 => 43, // boolean_flag_offset + num_boolean_flags
+            _ => panic!("Unsupported version."),
+        },
     };
     let is_flag_rw = [true, false, true, true, false, false, false, true];
-    let nodes = is_flag_rw.iter().map(|&rw| FlagInfoNode::create(rw)).collect();
-    FlagInfoList { header, nodes }
+    let boolean_info = is_flag_rw.iter().map(|&rw| FlagInfoNode::create(rw)).collect();
+    let int_info = match version {
+        1..=3 => vec![],
+        4 => is_flag_rw.iter().map(|&rw| FlagInfoNode::create(rw)).collect(),
+        _ => panic!("Unsupported version."),
+    };
+    FlagInfoList { header, boolean_nodes: boolean_info, int_nodes: int_info }
 }
 
 pub fn write_bytes_to_temp_file(bytes: &[u8]) -> Result<NamedTempFile, AconfigStorageError> {
     let mut file = NamedTempFile::new().map_err(|_| {
         AconfigStorageError::FileCreationFail(anyhow!("Failed to create temp file"))
     })?;
-    let _ = file.write_all(&bytes);
+    file.write_all(bytes)
+        .map_err(|_| AconfigStorageError::FileWriteFail(anyhow!("Failed to write to temp file")))?;
     Ok(file)
 }
 
@@ -217,10 +290,45 @@ pub fn get_test_data_path(file_type: StorageFileType, version: u32) -> PathBuf {
 }
 
 fn get_source_file_name(file_type: StorageFileType, version: u32) -> String {
-    return match file_type {
+    match file_type {
         StorageFileType::PackageMap => format!("data/v{version}/package_v{version}.map"),
         StorageFileType::FlagMap => format!("data/v{version}/flag_v{version}.map"),
         StorageFileType::FlagVal => format!("data/v{version}/flag_v{version}.val"),
         StorageFileType::FlagInfo => format!("data/v{version}/flag_v{version}.info"),
-    };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::MAX_SUPPORTED_FILE_VERSION;
+
+    use super::*;
+
+    // Verify that the test data is in sync with the util functions defined in
+    // this module. Test data can be regenerated with the following command:
+    //   aconfig-storage generate-test-data
+    #[test]
+    fn test_test_data_consistency() {
+        for version in 1..=MAX_SUPPORTED_FILE_VERSION {
+            let path = get_test_data_path(StorageFileType::PackageMap, version);
+            let file_bytes = std::fs::read(path).unwrap();
+            let generated_bytes = create_test_package_table(version).into_bytes();
+            assert_eq!(file_bytes, generated_bytes, "package.map mismath for v{}", version);
+
+            let path = get_test_data_path(StorageFileType::FlagMap, version);
+            let file_bytes = std::fs::read(path).unwrap();
+            let generated_bytes = create_test_flag_table(version).into_bytes();
+            assert_eq!(file_bytes, generated_bytes, "flag.map file mismatch for v{}", version);
+
+            let path = get_test_data_path(StorageFileType::FlagVal, version);
+            let file_bytes = std::fs::read(path).unwrap();
+            let generated_bytes = create_test_flag_value_list(version).into_bytes();
+            assert_eq!(file_bytes, generated_bytes, "flag.val file mismatch for v{}", version);
+
+            let path = get_test_data_path(StorageFileType::FlagInfo, version);
+            let file_bytes = std::fs::read(path).unwrap();
+            let generated_bytes = create_test_flag_info_list(version).into_bytes();
+            assert_eq!(file_bytes, generated_bytes, "flag.info file mismatch for v{}", version);
+        }
+    }
 }

@@ -31,3 +31,13 @@ flag {
     purpose: PURPOSE_BUGFIX
   }
 }
+
+flag {
+  name: "aflags_list_mainline_beta"
+  namespace: "core_experiments_team_internal"
+  bug: "424467628"
+  description: "When enabled, aconfig list will list Mainline Beta flags from device_config storage."
+  metadata {
+    purpose: PURPOSE_BUGFIX
+  }
+}

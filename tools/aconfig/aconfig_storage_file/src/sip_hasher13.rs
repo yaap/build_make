@@ -221,7 +221,7 @@ impl Hasher for SipHasher13 {
             needed = 8 - self.ntail;
             // safe to call, since msg hasn't been processed
             // and cmp::min(length, needed) < 8
-            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << 8 * self.ntail;
+            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << (8 * self.ntail);
             if length < needed {
                 self.ntail += length;
                 return;

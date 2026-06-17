@@ -169,6 +169,10 @@ Usage:  sign_target_files_apks [flags] input_target_files output_target_files
       If the signer uses a RSA key, this should be the number of bytes to
       represent the modulus. If it uses an EC key, this is the size of a
       DER-encoded ECDSA signature.
+
+  --apk_logging_on_success
+      Whether to log output of APK signing on success. Default behavior skips
+      logging output when signing an APK succeeds.
 """
 
 from __future__ import print_function
@@ -176,6 +180,7 @@ from __future__ import print_function
 import base64
 import copy
 import errno
+import fnmatch
 import gzip
 import io
 import itertools
@@ -183,10 +188,14 @@ import logging
 import os
 import re
 import shutil
+import struct
 import stat
 import sys
 import shlex
 import tempfile
+import threading
+import time
+from typing import List
 import zipfile
 from xml.etree import ElementTree
 
@@ -197,7 +206,8 @@ import common
 import payload_signer
 import update_payload
 from payload_signer import SignOtaPackage, PAYLOAD_BIN
-
+from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures.process import ProcessPoolExecutor
 
 if sys.hexversion < 0x02070000:
   print("Python 2.7 or newer is required.", file=sys.stderr)
@@ -226,6 +236,8 @@ OPTIONS.allow_gsi_debug_sepolicy = False
 OPTIONS.override_apk_keys = None
 OPTIONS.override_apex_keys = None
 OPTIONS.input_tmp = None
+OPTIONS.threads = 1
+OPTIONS.apk_logging_on_success = False
 
 
 AVB_FOOTER_ARGS_BY_PARTITION = {
@@ -571,7 +583,8 @@ def SignApk(data, keyname, pw, platform_api_level, codename_to_api_level_map,
 
   common.SignFile(unsigned.name, signed.name, keyname, pw,
                   min_api_level=min_api_level,
-                  codename_to_api_level_map=codename_to_api_level_map)
+                  codename_to_api_level_map=codename_to_api_level_map,
+                  log_on_success=OPTIONS.apk_logging_on_success)
 
   data = None
   if is_compressed:
@@ -636,11 +649,13 @@ def GetOtaSigningArgs():
     args.extend(["--private_key_suffix", OPTIONS.private_key_suffix])
   return args
 
-
-def RegenerateKernelPartitions(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.ZipFile, misc_info):
+def RegenerateKernelPartitions(input_tf_zip: zipfile.ZipFile, output_tf_dir: str, misc_info):
   """Re-generate boot and dtbo partitions using new signing configuration"""
+  # We need the 16KB images, and boot.img/dtbo.img in PREBUILT_IMAGES dir
+  # We can't unzip IMAGES/boot.img, because signer script will treat that
+  # image as pre-signed, and we need to re-sign boot.img
   files_to_unzip = [
-      "PREBUILT_IMAGES/*", "BOOTABLE_IMAGES/*.img", "*/boot_16k.img", "*/dtbo_16k.img"]
+      "BOOTABLE_IMAGES/*.img", "*/boot_16k.img", "*/dtbo_16k.img", "PREBUILT_IMAGES/boot.img", "PREBUILT_IMAGES/dtbo.img"]
   if OPTIONS.input_tmp is None:
     OPTIONS.input_tmp = common.UnzipTemp(input_tf_zip.filename, files_to_unzip)
   else:
@@ -651,12 +666,14 @@ def RegenerateKernelPartitions(input_tf_zip: zipfile.ZipFile, output_tf_zip: zip
   boot_image = common.GetBootableImage(
       "IMAGES/boot.img", "boot.img", unzip_dir, "BOOT", misc_info)
   if boot_image:
+    boot_image.WriteToDir(output_tf_dir)
+    # Need to write to unzip_dir as well because RegenerateBootOTA uses it
     boot_image.WriteToDir(unzip_dir)
-    boot_image = os.path.join(unzip_dir, boot_image.name)
-    common.ZipWrite(output_tf_zip, boot_image, "IMAGES/boot.img",
-                    compress_type=zipfile.ZIP_STORED)
   if misc_info.get("has_dtbo") == "true":
-    add_img_to_target_files.AddDtbo(output_tf_zip)
+    add_img_to_target_files.AddDtbo(output_tf_dir)
+    # Need to write to unzip_dir as well because RegenerateBootOTA uses it
+    shutil.copy(os.path.join(output_tf_dir, "IMAGES", "dtbo.img"),
+                os.path.join(unzip_dir, "IMAGES", "dtbo.img"))
   return unzip_dir
 
 
@@ -681,7 +698,7 @@ def RegenerateBootOTA(input_tf_zip: zipfile.ZipFile, filename, input_ota):
   unzip_dir = OPTIONS.input_tmp
   signed_boot_image = os.path.join(unzip_dir, "IMAGES", "boot.img")
   if not os.path.exists(signed_boot_image):
-    logger.warn("Need to re-generate boot OTA {} but failed to get signed boot image. 16K dev option will be impacted, after rolling back to 4K user would need to sideload/flash their device to continue receiving OTAs.")
+    logger.warn("Need to re-generate boot OTA %s but failed to get signed boot image. 16K dev option will be impacted, after rolling back to 4K user would need to sideload/flash their device to continue receiving OTAs.", filename)
     return
   signed_dtbo_image = os.path.join(unzip_dir, "IMAGES", "dtbo.img")
   if "dtbo" in partitions and not os.path.exists(signed_dtbo_image):
@@ -715,42 +732,24 @@ def RegenerateBootOTA(input_tf_zip: zipfile.ZipFile, filename, input_ota):
       "Re-generating boot OTA {} using cmd {}".format(filename, args))
   ota_from_raw_img.main(args)
 
+def WriteOutputFile(directory: str, srcfile: str, entryname: str):
+  dst = os.path.join(directory, entryname)
+  os.makedirs(os.path.dirname(dst), exist_ok=True)
+  shutil.copyfile(srcfile, dst)
 
-def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.ZipFile, misc_info,
+
+def ProcessTargetFileEntries(input_tf_zip: zipfile.ZipFile, output_tf_dir: str, info: zipfile.ZipInfo, misc_info,
                        apk_keys, apex_keys, key_passwords,
                        platform_api_level, codename_to_api_level_map,
-                       compressed_extension):
-  # maxsize measures the maximum filename length, including the ones to be
-  # skipped.
-  try:
-    maxsize = max(
-        [len(os.path.basename(i.filename)) for i in input_tf_zip.infolist()
-         if GetApkFileInfo(i.filename, compressed_extension, [])[0]])
-  except ValueError:
-    # Sets this to zero for targets without APK files.
-    maxsize = 0
-
-  # Replace the AVB signing keys, if any.
-  ReplaceAvbSigningKeys(misc_info)
-  OPTIONS.info_dict = misc_info
-
-  # Rewrite the props in AVB signing args.
-  if misc_info.get('avb_enable') == 'true':
-    RewriteAvbProps(misc_info)
-
-  RegenerateKernelPartitions(input_tf_zip, output_tf_zip, misc_info)
-
-  system_root_image = misc_info.get("system_root_image") == "true"
-
-  for info in input_tf_zip.infolist():
+                       compressed_extension, maxsize):
     filename = info.filename
     if filename.startswith("IMAGES/"):
-      continue
+      return
 
     # Skip OTA-specific images (e.g. split super images), which will be
     # re-generated during signing.
     if filename.startswith("OTA/") and filename.endswith(".img"):
-      continue
+      return
 
     (is_apk, is_compressed, should_be_skipped) = GetApkFileInfo(
         filename, compressed_extension, OPTIONS.skip_apks_with_path_prefix)
@@ -762,7 +761,7 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
       print(
           "NOT signing: %s\n"
           "        (skipped due to matching prefix)" % (filename,))
-      common.ZipWriteStr(output_tf_zip, out_info, data)
+      WriteOutputData(output_tf_dir, out_info, data)
 
     # Sign APKs.
     elif is_apk:
@@ -775,13 +774,13 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         print("    signing: %-*s (%s)" % (maxsize, name, key))
         signed_data = SignApk(data, key, key_passwords[key], platform_api_level,
                               codename_to_api_level_map, is_compressed, name)
-        common.ZipWriteStr(output_tf_zip, out_info, signed_data)
+        WriteOutputData(output_tf_dir, out_info, signed_data)
       else:
         # an APK we're not supposed to sign.
         print(
             "NOT signing: %s\n"
             "        (skipped due to special cert string)" % (name,))
-        common.ZipWriteStr(output_tf_zip, out_info, data)
+        WriteOutputData(output_tf_dir, out_info, data)
 
     # Sign bundled APEX files on all partitions
     elif IsApexFile(filename):
@@ -809,13 +808,13 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
             no_hashtree=None,  # Let apex_util determine if hash tree is needed
             signing_args=OPTIONS.avb_extra_args.get('apex'),
             sign_tool=sign_tool)
-        common.ZipWrite(output_tf_zip, signed_apex, filename)
+        WriteOutputFile(output_tf_dir, signed_apex, filename)
 
       else:
         print(
             "NOT signing: %s\n"
             "        (skipped due to special cert string)" % (name,))
-        common.ZipWriteStr(output_tf_zip, out_info, data)
+        WriteOutputData(output_tf_dir, out_info, data)
 
     elif filename.endswith(".zip") and IsEntryOtaPackage(input_tf_zip, filename):
       logger.info("Re-signing OTA package {}".format(filename))
@@ -823,8 +822,7 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         RegenerateBootOTA(input_tf_zip, filename, input_ota)
 
         SignOtaPackage(input_ota.name, output_ota.name)
-        common.ZipWrite(output_tf_zip, output_ota.name, filename,
-                        compress_type=zipfile.ZIP_STORED)
+        WriteOutputFile(output_tf_dir, output_ota.name, filename)
     # System properties.
     elif IsBuildPropFile(filename):
       print("Rewriting %s:" % (filename,))
@@ -832,14 +830,14 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         new_data = data
       else:
         new_data = RewriteProps(data.decode())
-      common.ZipWriteStr(output_tf_zip, out_info, new_data)
+      WriteOutputData(output_tf_dir, out_info, new_data)
 
     # Replace the certs in *mac_permissions.xml (there could be multiple, such
     # as {system,vendor}/etc/selinux/{plat,vendor}_mac_permissions.xml).
     elif filename.endswith("mac_permissions.xml"):
       print("Rewriting %s with new keys." % (filename,))
       new_data = ReplaceCerts(data.decode())
-      common.ZipWriteStr(output_tf_zip, out_info, new_data)
+      WriteOutputData(output_tf_dir, out_info, new_data)
 
     # Ask add_img_to_target_files to rebuild the recovery patch if needed.
     elif filename in ("SYSTEM/recovery-from-boot.p",
@@ -872,7 +870,7 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
           break
       if not matched_removal:
         # Copy it verbatim if we don't want to remove it.
-        common.ZipWriteStr(output_tf_zip, out_info, data)
+        WriteOutputData(output_tf_dir, out_info, data)
 
     # Skip the vbmeta digest as we will recalculate it.
     elif filename == "META/vbmeta_digest.txt":
@@ -898,7 +896,7 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         public_key = common.ExtractAvbPublicKey(
             avbtool, signing_key)
         print("    Rewriting AVB public key of system_other in /product")
-        common.ZipWrite(output_tf_zip, public_key, filename)
+        WriteOutputFile(output_tf_dir, public_key, filename)
 
     # Updates pvmfw embedded public key with the virt APEX payload key.
     elif filename == "PREBUILT_IMAGES/pvmfw.img":
@@ -906,7 +904,7 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
       copy_pvmfw_verbatim = True
       namelist = input_tf_zip.namelist()
       apex_gen = (f for f in namelist if IsApexFile(f))
-      virt_apex_re = re.compile("^.*com\.([^\.]+\.)?android\.virt\.apex$")
+      virt_apex_re = re.compile(r"^.*com\.([^\.]+\.)?android\.virt\.apex$")
       virt_apex_path = next(
         (a for a in apex_gen if virt_apex_re.match(a)), None)
       if not virt_apex_path:
@@ -944,13 +942,13 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
             raise common.ExternalError("pvmfw embedded public key not found")
           # Replace the key and copy new files.
           new_data = data[:pos] + new_pubkey + data[pos+len(old_pubkey):]
-          common.ZipWriteStr(output_tf_zip, out_info, new_data)
-          common.ZipWriteStr(output_tf_zip, pubkey_info, new_pubkey)
+          WriteOutputData(output_tf_dir, out_info, new_data)
+          WriteOutputData(output_tf_dir, pubkey_info, new_pubkey)
         else:
           print("Skip updating public key in %s: no new_pubkey" % filename)
 
         if copy_pvmfw_verbatim:
-          common.ZipWriteStr(output_tf_zip, out_info, data)
+          WriteOutputData(output_tf_dir, out_info, data)
 
 
     elif filename == "PREBUILT_IMAGES/pvmfw_embedded.avbpubkey":
@@ -967,11 +965,11 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         print("No signed AP/EC firmware found, using existing.")
         signed_firmware_data = data
 
-      common.ZipWriteStr(output_tf_zip, out_info, signed_firmware_data)
+      WriteOutputData(output_tf_dir, out_info, signed_firmware_data)
 
     elif filename == "SIGNED_PREBUILTS/ap-ec-fw-signed.zip":
       # Skip the signed file since it was copied above.
-      continue
+      pass
 
     # Should NOT sign boot-debug.img.
     elif filename in (
@@ -987,7 +985,7 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         raise common.ExternalError("debug sepolicy shouldn't be included")
       else:
         # Copy it verbatim if we allow the file to exist.
-        common.ZipWriteStr(output_tf_zip, out_info, data)
+        WriteOutputData(output_tf_dir, out_info, data)
 
     # Sign microdroid_vendor.img.
     elif filename == "VENDOR/etc/avf/microdroid/microdroid_vendor.img":
@@ -998,7 +996,7 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         image.flush()
         ReplaceKeyInAvbHashtreeFooter(image, vendor_key, vendor_algorithm,
             misc_info)
-        common.ZipWrite(output_tf_zip, image.name, filename)
+        WriteOutputFile(output_tf_dir, image.name, filename)
     elif filename == "SYSTEM_EXT/etc/vm/trusty_vm/desktop_trusty_signed.elf":
       desktop_key = OPTIONS.extra_apex_payload_keys["com.google.android.virt.apex"]
       desktop_algorithm = OPTIONS.avb_algorithms.get("desktop_trusty")
@@ -1008,82 +1006,129 @@ def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_zip: zipfile.Zip
         image.write(data)
         image.flush()
         extra_args = OPTIONS.avb_extra_args.get("apex")
-        ResignDesktopTrusty(image, desktop_key, desktop_algorithm,
+        ResignTrustyVM(image, desktop_key, desktop_algorithm,
             misc_info, extra_args)
-        common.ZipWrite(output_tf_zip, image.name, filename)
+        WriteOutputFile(output_tf_dir, image.name, filename)
+    elif fnmatch.fnmatch(filename, "SYSTEM_EXT/etc/vm/trusty_vm/trusty_*.elf"):
+      payload_key = OPTIONS.extra_apex_payload_keys.get("com.google.android.virt.apex") or \
+                    OPTIONS.extra_apex_payload_keys.get("com.android.virt.apex")
+      assert payload_key is not None, \
+          ("No payload key found for com.google.android.virt.apex or "
+           "com.android.virt.apex in OPTIONS.extra_apex_payload_keys "
+           "for Trusty VM: {}".format(filename))
+
+      if payload_key == 'PRESIGNED':
+        # TODO(b/491364851): Ensure Trusty VM is signed with microdroid vbmeta key
+        print("Skip re-signing %s: virt APEX is PRESIGNED" % filename)
+      else:
+        with tempfile.NamedTemporaryFile() as image:
+          image.write(data)
+          image.flush()
+
+          # TODO(b/491073829): Enable re-signing of Trusty VMs on SYSTEM_EXT
+          # partition once the CF auto issue is resolved.
+          WriteOutputFile(output_tf_dir, image.name, filename)
+    elif fnmatch.fnmatch(filename, "VENDOR/etc/vm/trusty_vm/trusty_*.elf"):
+      vendor_trusty_vm_key = OPTIONS.avb_keys.get("vendor_trusty_vm") or \
+          OPTIONS.extra_apex_payload_keys.get("com.google.android.virt.apex") or \
+          OPTIONS.extra_apex_payload_keys.get("com.android.virt.apex")
+
+      assert vendor_trusty_vm_key is not None, \
+          ("No key found for vendor_trusty_vm or com.google.android.virt.apex "
+           "or com.android.virt.apex for Trusty VM: {}".format(filename))
+
+      if vendor_trusty_vm_key == 'PRESIGNED':
+        # TODO(b/491364851): Ensure Trusty VM is signed with microdroid vbmeta key
+        print("Skip re-signing %s: virt APEX is PRESIGNED" % filename)
+      else:
+        with tempfile.NamedTemporaryFile() as image:
+          image.write(data)
+          image.flush()
+          ResignTrustyVM(image, vendor_trusty_vm_key, "SHA256_RSA4096",
+              misc_info)
+          WriteOutputFile(output_tf_dir, image.name, filename)
     # A non-APK file; copy it verbatim.
     else:
-      try:
-        entry = output_tf_zip.getinfo(filename)
-        if output_tf_zip.read(entry) != data:
-          logger.warn(
-              "Output zip contains duplicate entries for %s with different contents", filename)
-        continue
-      except KeyError:
-        common.ZipWriteStr(output_tf_zip, out_info, data)
+      WriteOutputData(output_tf_dir, out_info, data)
+
+def SplitList(data, chunk_size):
+    """Yield successive n-sized chunks from data."""
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
+
+def ProcessWorker(threadLocal: threading.local, output_tf: str, misc_info,
+                       apk_keys, apex_keys, key_passwords,
+                       platform_api_level, codename_to_api_level_map,
+                       compressed_extension, maxsize, infolist):
+  input_tf_zip = threadLocal.input_tf_zip
+  if isinstance(infolist, list):
+    for info in infolist:
+      ProcessTargetFileEntries(input_tf_zip, output_tf, info, misc_info,
+                        apk_keys, apex_keys, key_passwords, platform_api_level, codename_to_api_level_map, compressed_extension, maxsize)
+  else:
+    ProcessTargetFileEntries(input_tf_zip, output_tf, infolist, misc_info,
+                        apk_keys, apex_keys, key_passwords, platform_api_level, codename_to_api_level_map, compressed_extension, maxsize)
+
+def ProcessTargetFiles(input_tf_zip: zipfile.ZipFile, output_tf_dir: str, misc_info,
+                       apk_keys, apex_keys, key_passwords,
+                       platform_api_level, codename_to_api_level_map,
+                       compressed_extension):
+  # maxsize measures the maximum filename length, including the ones to be
+  # skipped.
+  try:
+    maxsize = max(
+        [len(os.path.basename(i.filename)) for i in input_tf_zip.infolist()
+         if GetApkFileInfo(i.filename, compressed_extension, [])[0]])
+  except ValueError:
+    # Sets this to zero for targets without APK files.
+    maxsize = 0
+
+  # Replace the AVB signing keys, if any.
+  ReplaceAvbSigningKeys(misc_info)
+  OPTIONS.info_dict = misc_info
+
+  # Rewrite the props in AVB signing args.
+  if misc_info.get('avb_enable') == 'true':
+    RewriteAvbProps(misc_info)
+
+  RegenerateKernelPartitions(input_tf_zip, output_tf_dir, misc_info)
+  system_root_image = misc_info.get("system_root_image") == "true"
+  threadLocal = threading.local()
+  if OPTIONS.threads is not None and OPTIONS.threads > 1:
+    with ThreadPoolExecutor(OPTIONS.threads, initializer=lambda: setattr(threadLocal, "input_tf_zip", zipfile.ZipFile(input_tf_zip.filename, "r"))) as pool:
+      # 128 is arbitrary. Each worker need to open a new zipfile instance
+      # before processing a chunk, so we need to set a large enough chunk
+      # size to minimize overhead
+      futures = [pool.submit(ProcessWorker, threadLocal, output_tf_dir, misc_info,
+                       apk_keys, apex_keys, key_passwords,
+                       platform_api_level, codename_to_api_level_map,
+                       compressed_extension, maxsize, chunk) for chunk in input_tf_zip.infolist()]
+      for future in futures:
+        future.result()
+
+  else:
+    for info in input_tf_zip.infolist():
+      ProcessTargetFileEntries(input_tf_zip, output_tf_dir, info, misc_info,
+                      apk_keys, apex_keys, key_passwords, platform_api_level, codename_to_api_level_map, compressed_extension, maxsize)
 
   if OPTIONS.replace_ota_keys:
-    ReplaceOtaKeys(input_tf_zip, output_tf_zip, misc_info)
+    ReplaceOtaKeys(input_tf_zip, output_tf_dir, misc_info)
 
 
   # Write back misc_info with the latest values.
-  ReplaceMiscInfoTxt(input_tf_zip, output_tf_zip, misc_info)
+  ReplaceMiscInfoTxt(input_tf_zip, output_tf_dir, misc_info)
 
-def ResignDesktopTrusty(image, new_key, new_algorithm, misc_info, extra_args):
+def ResignTrustyVM(image, new_key, new_algorithm, misc_info, extra_args=None):
     avbtool = misc_info["avb_avbtool"]
-    cmd = ["desktop_trusty_signing_tool",
+    cmd = ["trusty_vm_signing_tool",
       "--avbtool", avbtool,
       "--key", new_key,
       "--algorithm", new_algorithm,
       "--elf-file", image.name,
-    ] + shlex.split(extra_args)
+    ]
+    if extra_args:
+      cmd += shlex.split(extra_args)
     common.RunAndCheckOutput(cmd)
-
-# Parse string output of `avbtool info_image`.
-def ParseAvbInfo(info_raw):
-  # line_matcher is for parsing each output line of `avbtool info_image`.
-  # example string input: "      Hash Algorithm:        sha1"
-  # example matched input: ("      ", "Hash Algorithm", "sha1")
-  line_matcher = re.compile(r'^(\s*)([^:]+):\s*(.*)$')
-  # prop_matcher is for parsing value part of 'Prop' in `avbtool info_image`.
-  # example string input: "example_prop_key -> 'example_prop_value'"
-  # example matched output: ("example_prop_key", "example_prop_value")
-  prop_matcher = re.compile(r"(.+)\s->\s'(.+)'")
-  info = {}
-  indent_stack = [[-1, info]]
-  for line_info_raw in info_raw.split('\n'):
-    # Parse the line
-    line_info_parsed = line_matcher.match(line_info_raw)
-    if not line_info_parsed:
-      continue
-    indent = len(line_info_parsed.group(1))
-    key = line_info_parsed.group(2).strip()
-    value = line_info_parsed.group(3).strip()
-
-    # Pop indentation stack
-    while indent <= indent_stack[-1][0]:
-      del indent_stack[-1]
-
-    # Insert information into 'info'.
-    cur_info = indent_stack[-1][1]
-    if value == "":
-      if key == "Descriptors":
-        empty_list = []
-        cur_info[key] = empty_list
-        indent_stack.append([indent, empty_list])
-      else:
-        empty_dict = {}
-        cur_info.append({key:empty_dict})
-        indent_stack.append([indent, empty_dict])
-    elif key == "Prop":
-      prop_parsed = prop_matcher.match(value)
-      if not prop_parsed:
-        raise ValueError(
-            "Failed to parse prop while getting avb information.")
-      cur_info.append({key:{prop_parsed.group(1):prop_parsed.group(2)}})
-    else:
-      cur_info[key] = value
-  return info
 
 def ReplaceKeyInAvbHashtreeFooter(image, new_key, new_algorithm, misc_info):
   # Get avb information about the image by parsing avbtool info_image.
@@ -1093,7 +1138,7 @@ def ReplaceKeyInAvbHashtreeFooter(image, new_key, new_algorithm, misc_info):
       avbtool, 'info_image',
       '--image', image_name
     ])
-    return ParseAvbInfo(info_raw)
+    return common.ParseAvbInfo(info_raw)
 
   # Get hashtree descriptor from info
   def GetAvbHashtreeDescriptor(avb_info):
@@ -1193,6 +1238,11 @@ def ReplaceCerts(data):
   assert len(signatures) == len(set(signatures)), \
       "Found duplicate entries after cert replacement: {}".format(data)
 
+  # Verify that there are no placeholders anymore.
+  placeholders = [s for s in signatures if s.startswith("@")]
+  assert len(placeholders) == 0, \
+      "Found placeholders in mac_permissions.xml: {}".format(placeholders)
+
   return data
 
 
@@ -1262,8 +1312,32 @@ def RewriteProps(data):
     output.append(line)
   return "\n".join(output) + "\n"
 
+def WriteOutputData(output_dir, filename, data):
+  if isinstance(data, str):
+    data = data.encode()
+  if isinstance(filename, zipfile.ZipInfo):
+    fileperm = filename.external_attr >> 16
+    filename = filename.filename
+    path = os.path.join(output_dir, filename)
+    if stat.S_ISDIR(fileperm):
+      os.makedirs(path, exist_ok=True)
+      os.chmod(path, fileperm & 0o777 | 0o755)
+      return
+    elif stat.S_ISLNK(fileperm):
+      os.makedirs(os.path.dirname(path), exist_ok=True)
+      os.symlink(data.decode(), path)
+      return
+  else:
+    fileperm = 0o644
 
-def WriteOtacerts(output_zip, filename, keys):
+  path = os.path.join(output_dir, filename)
+  os.makedirs(os.path.dirname(path), exist_ok=True)
+  with open(path, "wb") as f:
+    f.write(data)
+  os.chmod(path, fileperm)
+
+
+def WriteOtacerts(output_dir, filename, keys):
   """Constructs a zipfile from given keys; and writes it to output_zip.
 
   Args:
@@ -1276,10 +1350,10 @@ def WriteOtacerts(output_zip, filename, keys):
   for k in keys:
     common.ZipWrite(certs_zip, k)
   common.ZipClose(certs_zip)
-  common.ZipWriteStr(output_zip, filename, temp_file.getvalue())
+  WriteOutputData(output_dir, filename, temp_file.getvalue())
 
 
-def ReplaceOtaKeys(input_tf_zip: zipfile.ZipFile, output_tf_zip, misc_info):
+def ReplaceOtaKeys(input_tf_zip: zipfile.ZipFile, output_tf_dir: str, misc_info):
   try:
     keylist = input_tf_zip.read("META/otakeys.txt").decode().split()
   except KeyError:
@@ -1341,10 +1415,10 @@ def ReplaceOtaKeys(input_tf_zip: zipfile.ZipFile, output_tf_zip, misc_info):
     else:
       extra_keys = extra_ota_keys
     print("Rewriting OTA key:", info.filename, mapped_keys + extra_keys)
-    WriteOtacerts(output_tf_zip, info.filename, mapped_keys + extra_keys)
+    WriteOtacerts(output_tf_dir, info.filename, mapped_keys + extra_keys)
 
 
-def ReplaceMiscInfoTxt(input_zip, output_zip, misc_info):
+def ReplaceMiscInfoTxt(input_zip, output_dir, misc_info):
   """Replaces META/misc_info.txt.
 
   Only writes back the ones in the original META/misc_info.txt. Because the
@@ -1356,7 +1430,7 @@ def ReplaceMiscInfoTxt(input_zip, output_zip, misc_info):
   for key in sorted(misc_info):
     if key in misc_info_old:
       items.append('%s=%s' % (key, misc_info[key]))
-  common.ZipWriteStr(output_zip, "META/misc_info.txt", '\n'.join(items))
+  WriteOutputData(output_dir, "META/misc_info.txt", '\n'.join(items))
 
 
 def ReplaceAvbSigningKeys(misc_info):
@@ -1551,8 +1625,20 @@ def ReadApexKeysInfo(tf_zip):
 
   return keys
 
+def CopyDir(input_dir, patterns, tmpdir_prefix=None):
+  tmpdir = common.MakeTempDir(tmpdir_prefix)
+  for root, _, files in os.walk(input_dir):
+    for filename in files:
+      src_file = os.path.join(root, filename)
+      rel_path = os.path.relpath(src_file, input_dir)
+      if any(fnmatch.fnmatch(rel_path, pattern) for pattern in patterns):
+        dst_file = os.path.join(tmpdir, rel_path)
+        os.makedirs(os.path.dirname(dst_file), exist_ok=True)
+        shutil.copy(src_file, dst_file)
+  return tmpdir
 
-def BuildVendorPartitions(output_zip_path):
+
+def BuildVendorPartitions(output_tf_dir):
   """Builds OPTIONS.vendor_partitions using OPTIONS.vendor_otatools."""
   if OPTIONS.vendor_partitions.difference(ALLOWED_VENDOR_PARTITIONS):
     logger.warning("Allowed --vendor_partitions: %s",
@@ -1561,13 +1647,13 @@ def BuildVendorPartitions(output_zip_path):
         OPTIONS.vendor_partitions)
 
   logger.info("Building vendor partitions using vendor otatools.")
-  vendor_tempdir = common.UnzipTemp(output_zip_path, [
+  vendor_tempdir = CopyDir(output_tf_dir, [
       "META/*",
       "SYSTEM/build.prop",
       "RECOVERY/*",
       "BOOT/*",
       "OTA/",
-  ] + ["{}/*".format(p.upper()) for p in OPTIONS.vendor_partitions])
+  ] + ["{}/*".format(p.upper()) for p in OPTIONS.vendor_partitions], "vendor_tempdir_")
 
   # Disable various partitions that build based on misc_info fields.
   # Only partitions in ALLOWED_VENDOR_PARTITIONS can be rebuilt using
@@ -1634,25 +1720,88 @@ def BuildVendorPartitions(output_zip_path):
   common.RunAndCheckOutput(cmd, verbose=True)
 
   logger.info("Writing vendor partitions to output archive.")
-  with zipfile.ZipFile(
-      output_zip_path, "a", compression=zipfile.ZIP_DEFLATED,
-      allowZip64=True) as output_zip:
-    for p in OPTIONS.vendor_partitions:
-      img_file_path = "IMAGES/{}.img".format(p)
-      map_file_path = "IMAGES/{}.map".format(p)
-      common.ZipWrite(output_zip, os.path.join(vendor_tempdir, img_file_path), img_file_path)
-      if os.path.exists(os.path.join(vendor_tempdir, map_file_path)):
-        common.ZipWrite(output_zip, os.path.join(vendor_tempdir, map_file_path), map_file_path)
-    # copy recovery.img, boot.img, recovery patch & install.sh
-    if OPTIONS.rebuild_recovery:
-      recovery_img = "IMAGES/recovery.img"
-      boot_img = "IMAGES/boot.img"
-      common.ZipWrite(output_zip, os.path.join(vendor_tempdir, recovery_img), recovery_img)
-      common.ZipWrite(output_zip, os.path.join(vendor_tempdir, boot_img), boot_img)
-      recovery_patch_path = "VENDOR/recovery-from-boot.p"
-      recovery_sh_path = "VENDOR/bin/install-recovery.sh"
-      common.ZipWrite(output_zip, os.path.join(vendor_tempdir, recovery_patch_path), recovery_patch_path)
-      common.ZipWrite(output_zip, os.path.join(vendor_tempdir, recovery_sh_path), recovery_sh_path)
+  for p in OPTIONS.vendor_partitions:
+    img_file_path = "IMAGES/{}.img".format(p)
+    map_file_path = "IMAGES/{}.map".format(p)
+    WriteOutputFile(output_tf_dir, os.path.join(vendor_tempdir, img_file_path), img_file_path)
+    if os.path.exists(os.path.join(vendor_tempdir, map_file_path)):
+      WriteOutputFile(output_tf_dir, os.path.join(vendor_tempdir, map_file_path), map_file_path)
+  # copy recovery.img, boot.img, recovery patch & install.sh
+  if OPTIONS.rebuild_recovery:
+    recovery_img = "IMAGES/recovery.img"
+    boot_img = "IMAGES/boot.img"
+    WriteOutputFile(output_tf_dir, os.path.join(vendor_tempdir, recovery_img), recovery_img)
+    WriteOutputFile(output_tf_dir, os.path.join(vendor_tempdir, boot_img), boot_img)
+    recovery_patch_path = "VENDOR/recovery-from-boot.p"
+    recovery_sh_path = "VENDOR/bin/install-recovery.sh"
+    WriteOutputFile(output_tf_dir, os.path.join(vendor_tempdir, recovery_patch_path), recovery_patch_path)
+    WriteOutputFile(output_tf_dir, os.path.join(vendor_tempdir, recovery_sh_path), recovery_sh_path)
+
+def IsErofsImage(filename):
+    """
+    Checks if the given file is an EROFS image by verifying its magic number.
+    """
+
+    if os.path.getsize(filename) < 4096:
+      return False
+    EROFS_SUPER_MAGIC = 0xe0f5e1e2
+    SUPER_OFFSET = 0x400
+    with open(filename, 'rb') as fp:
+      fp.seek(SUPER_OFFSET)
+      super_block = fp.read(128)
+      if len(super_block) < 128:
+        return False
+      magic = struct.unpack('<I', super_block[:4])[0]
+      return magic == EROFS_SUPER_MAGIC
+
+def IsCompressedApex(filename):
+  with zipfile.ZipFile(filename, "r") as zfp:
+    try:
+      zinfo = zfp.getinfo("original_apex")
+      if zinfo.compress_size < zinfo.file_size:
+        return True
+    except KeyError:
+      pass
+    try:
+      zinfo = zfp.getinfo("apex_payload.img")
+      if zinfo.compress_size < zinfo.file_size:
+        return True
+    except KeyError:
+      pass
+  return False
+
+def CollectDirToZip(directory, zfp: str):
+  # rm -rf the output zip first, as zip command would try to re-use existing
+  # zip file
+  try:
+    os.unlink(zfp)
+  except OSError:
+    pass
+  precompressed = []
+  compressed_extensions = [".capex", ".apk", ".gz", ".png", ".ogg", ".mp3", ".zip", ".amr", ".prof", ".leveldb", ".jpg"]
+  for root, _, files in os.walk(directory):
+    for filename in files:
+      src = os.path.join(root, filename)
+
+      rel_path = os.path.relpath(src, directory)
+      if any([rel_path.endswith(ext) for ext in compressed_extensions]):
+        precompressed.append(rel_path)
+      elif filename.endswith(".img") and (common.IsSparseImage(src) or IsErofsImage(src)):
+        precompressed.append(rel_path)
+      elif filename.endswith(".apex") and IsCompressedApex(src):
+        precompressed.append(rel_path)
+
+  # Need to use absolute path, as we change current working directory when
+  # running external zip binary
+  zfp = os.path.abspath(zfp)
+  with tempfile.NamedTemporaryFile(prefix="precompressed_list_") as tmpfile:
+    for line in precompressed:
+      tmpfile.write(line.encode() + b"\n")
+    tmpfile.flush()
+    # First add all other files to zip with compression
+    common.RunAndCheckOutput(["zip", zfp, "-y", "-r", ".", "-x@" + tmpfile.name], cwd=directory)
+    # Then add pre-compressed files without compression to save CPU cycle
+    common.RunAndCheckOutput(["zip", zfp, "-y", "-0", "-r", ".", "-i@" + tmpfile.name], cwd=directory)
 
 
 def main(argv):
@@ -1788,6 +1937,14 @@ def main(argv):
       print(f"{o} is deprecated and does nothing")
     elif o == "--avb_desktop_trusty_algorithm":
       OPTIONS.avb_algorithms['desktop_trusty'] = a
+    elif o == "--threads":
+      OPTIONS.threads = int(a)
+      if OPTIONS.threads <= 0:
+        raise ValueError("--threads must be a positive integer")
+    elif o == "--apk_logging_on_success":
+      OPTIONS.apk_logging_on_success = True
+    elif o == "--avb_vendor_trusty_vm_key":
+      OPTIONS.avb_keys["vendor_trusty_vm"] = a
     else:
       return False
     return True
@@ -1850,6 +2007,9 @@ def main(argv):
           "allow_gsi_debug_sepolicy",
           "override_apk_keys=",
           "override_apex_keys=",
+          "threads=",
+          "apk_logging_on_success",
+          "avb_vendor_trusty_vm_key=",
       ],
       extra_option_handler=[option_handler, payload_signer.signer_options])
 
@@ -1858,12 +2018,9 @@ def main(argv):
     sys.exit(1)
 
   common.InitLogging()
+  start_time = time.time()
 
   input_zip = zipfile.ZipFile(args[0], "r", allowZip64=True)
-  output_zip = zipfile.ZipFile(args[1], "w",
-                               compression=zipfile.ZIP_DEFLATED,
-                               allowZip64=True)
-
   misc_info = common.LoadInfoDict(input_zip)
   if OPTIONS.package_key is None:
       OPTIONS.package_key = misc_info.get(
@@ -1891,16 +2048,21 @@ def main(argv):
   platform_api_level, _ = GetApiLevelAndCodename(input_zip)
   codename_to_api_level_map = GetCodenameToApiLevelMap(input_zip)
 
-  ProcessTargetFiles(input_zip, output_zip, misc_info,
-                     apk_keys, apex_keys, key_passwords,
-                     platform_api_level, codename_to_api_level_map,
-                     compressed_extension)
+  output_zip = args[1]
+  output_tf_dir = common.MakeTempDir("signed_target_files_")
+  ProcessTargetFiles(input_zip, output_tf_dir, misc_info,
+                    apk_keys, apex_keys, key_passwords,
+                    platform_api_level, codename_to_api_level_map,
+                    compressed_extension)
+
 
   common.ZipClose(input_zip)
-  common.ZipClose(output_zip)
+  signing_duration = time.time() - start_time
+  start_time = time.time()
+  logger.info("Signing took %f seconds", signing_duration)
 
   if OPTIONS.vendor_partitions and OPTIONS.vendor_otatools:
-    BuildVendorPartitions(args[1])
+    BuildVendorPartitions(output_zip)
 
   # Skip building userdata.img and cache.img when signing the target files.
   new_args = ["--is_signing", "--add_missing", "--verbose"]
@@ -1908,10 +2070,20 @@ def main(argv):
   # recovery patch is guaranteed to be regenerated there.
   if OPTIONS.rebuild_recovery:
     new_args.append("--rebuild_recovery")
-  new_args.append(args[1])
+  new_args.append(output_tf_dir)
   add_img_to_target_files.main(new_args)
+  image_generation_time = time.time() - start_time
+  logger.info("Image generation took %f seconds", image_generation_time)
 
-  print("done.")
+  start_time = time.time()
+  logger.info("Collecting all files in temp dir %s to output zip %s", output_tf_dir, output_zip)
+
+  CollectDirToZip(output_tf_dir, output_zip)
+
+  zip_collection_time = time.time() - start_time
+  logger.info("Zipping output took %f seconds", zip_collection_time)
+  logger.info("Total time %f seconds", image_generation_time + signing_duration + zip_collection_time)
+  print("done. ", output_zip)
 
 
 if __name__ == '__main__':

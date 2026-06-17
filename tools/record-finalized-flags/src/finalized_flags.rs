@@ -24,7 +24,7 @@ use crate::FlagId;
 pub(crate) fn read_finalized_flags<R: Read>(mut reader: R) -> Result<HashSet<FlagId>> {
     let mut contents = String::new();
     reader.read_to_string(&mut contents)?;
-    let iter = contents.lines().map(|s| s.to_owned());
+    let iter = contents.lines().filter(|s| !s.is_empty()).map(|s| s.to_owned());
     Ok(HashSet::from_iter(iter))
 }
 

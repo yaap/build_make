@@ -60,14 +60,21 @@ public class Utils {
 
     public static void writeContentsToJson(DependencyProto.FileDependencyList contents, Path jsonOut) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        Map<String, Set<String>> jsonMap = new HashMap<>();
+        Map<String, Map<String, Object>> nestedJsonMap = new HashMap<>();
         for (DependencyProto.FileDependency fileDependency : contents.getFileDependencyList()) {
-            jsonMap.putIfAbsent(fileDependency.getFilePath(), new HashSet<>(Set.copyOf(fileDependency.getFileDependenciesList())));
+            String filePath = fileDependency.getFilePath();
+            // Keep innerMap in sync with the structure of DependencyProto.FileDependencyList
+            Map<String, Object> innerMap = nestedJsonMap.computeIfAbsent(filePath, k -> new HashMap<>());
+            innerMap.put("fileDependencies", new HashSet<>(fileDependency.getFileDependenciesList()));
+            innerMap.put("generatedClasses", new HashSet<>(fileDependency.getGeneratedClassesList()));
+            innerMap.put("crossModuleClassDeps", new HashSet<>(fileDependency.getCrossModuleClassDepsList()));
             if (fileDependency.getIsDependencyToAll()) {
-                jsonMap.get(fileDependency.getFilePath()).add("isDepToAll");
+                innerMap.put("isDependencyToAll", true);
+            } else {
+                innerMap.put("isDependencyToAll", false);
             }
         }
-        String json = gson.toJson(jsonMap);
+        String json = gson.toJson(nestedJsonMap);
         try (FileWriter file = new FileWriter(jsonOut.toFile())) {
             file.write(json);
         } catch (IOException e) {

@@ -22,6 +22,9 @@
 PRODUCT_SYSTEM_EXT_PROPERTIES += \
     ro.fw.mu.headless_system_user=true
 
+# Make run-as use current user, rather than user 0, when --user is not specified.
+PRODUCT_SYSTEM_EXT_PROPERTIES += debug.run-as.use_current_user=true
+
 # Experimental configuration sets a RAM limit for HSUM, primarily for testing its behavior
 # on simulated low RAM devices.
 ifneq ($(CONFIG_HSUM_EXPERIMENTAL_RAM_LIMIT),)

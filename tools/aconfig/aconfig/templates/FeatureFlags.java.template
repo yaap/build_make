@@ -16,7 +16,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 /** @hide */
 {{ -endif }}
 public interface FeatureFlags \{
-{{ for item in flag_elements }}
+{{ for item in overridable_flag_elements }}
 {{ -if not item.is_read_write }}
 {{ -if item.default_value }}
     @com.android.aconfig.annotations.AssumeTrueForR8
@@ -26,10 +26,10 @@ public interface FeatureFlags \{
 {{ -endif }}
 {{ -if not library_exported }}
     @com.android.aconfig.annotations.AconfigFlagAccessor
-{{ if support_uau_annotation- }}
+{{ -if support_uau_annotation }}
     @UnsupportedAppUsage
-{{ -endif }}
+{{  endif }}
 {{ -endif }}
     boolean {item.method_name}();
-{{ -endfor }}
+{{ endfor }}
 }

@@ -10,7 +10,7 @@ function commit_step_1_changes() {
             repo start "'$repo_branch'" ;
             git add -A . ;
             git commit -m "$FINAL_PLATFORM_CODENAME is now $FINAL_PLATFORM_SDK_VERSION and extension version $FINAL_MAINLINE_EXTENSION" \
-                       -m "Ignore-AOSP-First: $FINAL_PLATFORM_CODENAME Finalization
+                       -m "Flag: EXEMPT Finalization
 Bug: $FINAL_BUG_ID
 Test: build";
             repo upload '"$repo_upload_dry_run_arg"' --cbr --no-verify -o nokeycheck -t -y . ;

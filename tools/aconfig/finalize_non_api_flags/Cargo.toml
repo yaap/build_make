@@ -1,0 +1,14 @@
+# Cargo.toml file to allow rapid development of finalize-non-api-flags using
+# cargo. Soong is the official Android build system, and the only system
+# guaranteed to support finalize-non-api-flags. If there is ever any issue with
+# the cargo setup, support for cargo will be dropped and this file removed.
+
+[package]
+name = "finalize-non-api-flags"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aconfig_protos = { path = "../aconfig_protos" }
+anyhow = { path = "../../../../../external/rust/android-crates-io/crates/anyhow" }
+clap = { path = "../../../../../external/rust/android-crates-io/crates/clap", features = ["derive"] }

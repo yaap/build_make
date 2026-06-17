@@ -69,6 +69,7 @@ cc_binary_host {
     srcs: ["main.cc"],
     shared_libs: [
         "libclang-cpp_host",
+        "libLLVM_host",
         "libprotobuf-cpp-full",
     ],
     static_libs: [

@@ -74,4 +74,10 @@
     <install-in-user-type package="com.android.wallpapercropper">
         <install-in user-type="FULL" />
     </install-in-user-type>
+
+    <!-- Basic Dreams (BasicDreams) -->
+    <install-in-user-type package="com.android.dreams.basic">
+        <install-in user-type="FULL" />
+    </install-in-user-type>
+
 </config>

@@ -1,5 +1,5 @@
 #include <android-base/unique_fd.h>
-#include <sys/mman.h>
+#include <android-base/mapped_file.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -9,15 +9,45 @@
 #include "aconfig_storage/lib.rs.h"
 #include "aconfig_storage/aconfig_storage_read_api.hpp"
 
+#if defined(_WIN32)
+#if !defined(O_CLOEXEC)
+/** Windows has O_CLOEXEC but calls it O_NOINHERIT. */
+#define O_CLOEXEC O_NOINHERIT
+#endif
+
+#if !defined(O_NOFOLLOW)
+/** Windows has no O_NOFOLLOW. */
+#define O_NOFOLLOW 0
+#endif
+#endif
+
+
+#if !defined(_WIN32) && !defined(O_BINARY)
+/** Windows needs O_BINARY, but Unix never mangles line endings. */
+#define O_BINARY 0
+#endif
+
 namespace aconfig_storage {
 
 /// Storage location pb file
 static constexpr char kStorageDir[] = "/metadata/aconfig";
 
+namespace {
+struct MappedStorageFileImpl : public MappedStorageFile {
+  android::base::MappedFile mapped_file;
+
+  MappedStorageFileImpl(android::base::MappedFile&& mapping)
+      : mapped_file(std::move(mapping)) {
+    file_ptr = mapped_file.data();
+    file_size = mapped_file.size();
+  }
+
+  ~MappedStorageFileImpl() override = default;
+};
+} // namespace
+
 /// destructor
-MappedStorageFile::~MappedStorageFile() {
-  munmap(file_ptr, file_size);
-}
+MappedStorageFile::~MappedStorageFile() = default;
 
 /// Get storage file path
 static Result<std::string> find_storage_file(
@@ -60,7 +90,7 @@ Result<MappedStorageFile*> get_mapped_file_impl(
 
 /// Map a storage file
 Result<MappedStorageFile*> map_storage_file(std::string const& file) {
-  android::base::unique_fd ufd(open(file.c_str(), O_CLOEXEC | O_NOFOLLOW | O_RDONLY));
+  android::base::unique_fd ufd(open(file.c_str(), O_CLOEXEC | O_NOFOLLOW | O_RDONLY | O_BINARY));
   if (ufd.get() == -1) {
     auto result = Result<MappedStorageFile*>();
     result.errmsg = std::string("failed to open ") + file + ": " + strerror(errno);
@@ -75,18 +105,14 @@ Result<MappedStorageFile*> map_storage_file(std::string const& file) {
   }
   size_t file_size = fd_stat.st_size;
 
-  void* const map_result = mmap(nullptr, file_size, PROT_READ, MAP_SHARED, ufd.get(), 0);
-  if (map_result == MAP_FAILED) {
+  auto mapped_file = android::base::MappedFile::Create(ufd.get(), 0, file_size, PROT_READ);
+  if (!mapped_file) {
     auto result = Result<MappedStorageFile*>();
     result.errmsg = std::string("mmap failed: ") + strerror(errno);
     return result;
   }
 
-  auto mapped_file = new MappedStorageFile();
-  mapped_file->file_ptr = map_result;
-  mapped_file->file_size = file_size;
-
-  return mapped_file;
+  return new MappedStorageFileImpl(std::move(*mapped_file));
 }
 
 /// Map from StoredFlagType to FlagValueType

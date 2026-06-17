@@ -36,10 +36,16 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
 # GSI should always support up-to-date platform features.
 # Keep this value at the latest API level to ensure latest build system
 # default configs are applied.
-PRODUCT_SHIPPING_API_LEVEL := 34
+PRODUCT_SHIPPING_API_LEVEL := $(PLATFORM_SDK_VERSION)
 
 # Enable dynamic partitions to facilitate mixing onto Cuttlefish
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
+
+# Force-set 16KB page size configuration to be explicit,
+# also because shipping API level on the GSI sometimes gets
+# updated late.
+PRODUCT_NO_BIONIC_PAGE_SIZE_MACRO := true
+PRODUCT_MAX_PAGE_SIZE_SUPPORTED := 16384
 
 # Enable dynamic partition size
 PRODUCT_USE_DYNAMIC_PARTITION_SIZE := true
@@ -50,6 +56,18 @@ PRODUCT_PACKAGES += \
     init.gsi.rc \
     init.vndk-nodef.rc \
 
+# Add all system_ext packages used to support older/upgrading devices that have
+# PRODUCT_SHIPPING_API_LEVEL 34 or older.
+# These can be removed as we drop support for the older API levels.
+PRODUCT_PACKAGES += \
+    hwservicemanager \
+    android.hidl.allocator@1.0-service \
+    android.hidl.memory@1.0-impl \
+
+# PRODUCT_SHIPPING_API_LEVEL 33 or older.
+# These can be removed as we drop support for the older API levels.
+PRODUCT_PACKAGES += \
+    wificond \
 
 # Overlay the GSI specific setting for framework and SystemUI
 ifneq ($(PRODUCT_IS_AUTOMOTIVE),true)

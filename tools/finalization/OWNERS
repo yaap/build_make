@@ -1,5 +1,6 @@
 include platform/build/soong:/OWNERS
 include platform/frameworks/base:/SDK_OWNERS
 patb@google.com
-smoreland@google.com
+justinyun@google.com
+devinmoore@google.com
 zyy@google.com

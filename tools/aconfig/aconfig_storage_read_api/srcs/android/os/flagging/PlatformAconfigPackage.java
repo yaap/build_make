@@ -16,8 +16,12 @@
 
 package android.os.flagging;
 
+import static android.aconfig.statslog.AconfigStatsLog.ACONFIG_ERROR_OCCURRED;
+import static android.aconfig.statslog.AconfigStatsLog.ACONFIG_ERROR_OCCURRED__ERROR__ACONFIG_ERROR_UNSPECIFIED;
+import static android.aconfig.statslog.AconfigStatsLog.ACONFIG_ERROR_OCCURRED__OPERATION__ACONFIG_OPERATION_LOAD_PLATFORM_PACKAGE_MAP;
 import static android.aconfig.storage.TableUtils.StorageFilesBundle;
 
+import android.aconfig.statslog.AconfigStatsLog;
 import android.aconfig.storage.AconfigStorageException;
 import android.aconfig.storage.FlagTable;
 import android.aconfig.storage.FlagValueList;
@@ -85,6 +89,9 @@ public class PlatformAconfigPackage {
                     sStorageFilesCache.put(packageName, files);
                 }
             } catch (Exception e) {
+                AconfigStatsLog.write(ACONFIG_ERROR_OCCURRED,
+                    ACONFIG_ERROR_OCCURRED__OPERATION__ACONFIG_OPERATION_LOAD_PLATFORM_PACKAGE_MAP,
+                    ACONFIG_ERROR_OCCURRED__ERROR__ACONFIG_ERROR_UNSPECIFIED);
                 // pass
                 Log.w(TAG, e.toString());
             }

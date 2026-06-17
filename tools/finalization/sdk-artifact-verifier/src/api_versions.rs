@@ -1,10 +1,68 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use serde_xml_rs::{from_reader, from_str};
 use std::collections::BTreeMap;
+use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::str::FromStr;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct MajorMinorVersion {
+    pub major: u32,
+    pub minor: Option<u32>,
+}
+
+impl MajorMinorVersion {
+    pub fn parse(sdk: &str) -> Result<Self> {
+        if let Some((major_str, minor_str)) = sdk.split_once('.') {
+            // Minor version is provided
+            let major = major_str.parse::<u32>().with_context(|| {
+                format!("Failed to parse major version '{}' from SDK version: '{}'", major_str, sdk)
+            })?;
+            let minor = minor_str.parse::<u32>().with_context(|| {
+                format!("Failed to parse minor version '{}' from SDK version: '{}'", minor_str, sdk)
+            })?;
+            Ok(Self { major, minor: Some(minor) })
+        } else {
+            // Only major version is provided
+            let major = sdk
+                .parse::<u32>()
+                .with_context(|| format!("Failed to parse version from SDK version: '{}'", sdk))?;
+            Ok(Self { major, minor: None })
+        }
+    }
+}
+
+// Implement FromStr
+impl FromStr for MajorMinorVersion {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        MajorMinorVersion::parse(s)
+    }
+}
+
+impl fmt::Display for MajorMinorVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.minor {
+            Some(minor_val) => write!(f, "{}.{}", self.major, minor_val),
+            None => write!(f, "{}", self.major),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for MajorMinorVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse::<MajorMinorVersion>().map_err(D::Error::custom)
+    }
+}
 
 #[allow(dead_code)]
 #[derive(Deserialize, Debug)]
@@ -23,9 +81,9 @@ pub struct Class {
     #[serde(rename = "name")]
     pub name: String,
     #[serde(rename = "since")]
-    pub since: String,
-    #[serde(rename = "deprecated")]
-    pub deprecated: Option<String>,
+    pub since: MajorMinorVersion,
+    #[serde(rename = "deprecated", default)]
+    pub deprecated: Option<MajorMinorVersion>,
     #[serde(rename = "sdks")]
     pub sdks: Option<String>,
     #[serde(rename = "module")]
@@ -46,10 +104,10 @@ pub struct Class {
 pub struct Method {
     #[serde(rename = "name")]
     pub name: String,
-    #[serde(rename = "since")]
-    pub since: Option<String>,
-    #[serde(rename = "deprecated")]
-    pub deprecated: Option<String>,
+    #[serde(rename = "since", default)]
+    pub since: Option<MajorMinorVersion>,
+    #[serde(rename = "deprecated", default)]
+    pub deprecated: Option<MajorMinorVersion>,
     #[serde(rename = "sdks")]
     pub sdks: Option<String>,
 }
@@ -79,10 +137,10 @@ pub struct Extends {
 pub struct Field {
     #[serde(rename = "name")]
     pub name: String,
-    #[serde(rename = "since")]
-    pub since: Option<String>,
-    #[serde(rename = "deprecated")]
-    pub deprecated: Option<String>,
+    #[serde(rename = "since", default)]
+    pub since: Option<MajorMinorVersion>,
+    #[serde(rename = "deprecated", default)]
+    pub deprecated: Option<MajorMinorVersion>,
     #[serde(rename = "sdks")]
     pub sdks: Option<String>,
 }

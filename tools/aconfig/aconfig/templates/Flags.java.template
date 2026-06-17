@@ -18,11 +18,11 @@ import android.os.Build;
 /** @hide */
 {{ -endif }}
 public final class Flags \{
-{{ -for item in flag_elements}}
+{{ for item in flag_elements}}
     /** @hide */
     public static final String FLAG_{item.flag_name_constant_suffix} = "{item.device_config_flag}";
-{{- endfor }}
-{{ -for item in flag_elements}}
+{{ -endfor }}
+{{ for item in flag_elements}}
 {{ -if not item.is_read_write }}
 {{ -if item.default_value }}
     @com.android.aconfig.annotations.AssumeTrueForR8
@@ -32,21 +32,30 @@ public final class Flags \{
 {{ -endif }}
 {{ -if not library_exported }}
     @com.android.aconfig.annotations.AconfigFlagAccessor
-{{ -if support_uau_annotation- }}
+{{ -if support_uau_annotation }}
     @UnsupportedAppUsage
 {{ -endif }}
 {{ -endif }}
     public static boolean {item.method_name}() \{
-        {{ if library_exported- }}
+        {{ -if library_exported }}
         {{ -if item.finalized_sdk_present }}
         if ({item.finalized_sdk_check|unescaped}) \{
           return true;
         }
         {{ -endif}}  {#- end finalized_sdk_present#}
         {{ -endif}}  {#- end library_exported#}
+        {{ -if item.is_read_write }}
         return FEATURE_FLAGS.{item.method_name}();
+        {{ -else }}
+        {{ -if optimize_read_only_getter }}
+        return {item.default_value};
+        {{ -else }}
+        return FEATURE_FLAGS.{item.method_name}();
+        {{ -endif }}
+        {{ -endif }}
     }
-{{ -endfor }}
+{{ endfor }}
+{{ -if not is_read_only_optimized }}
 {{ -if is_test_mode }}
     public static void setFeatureFlags(FeatureFlags featureFlags) \{
         Flags.FEATURE_FLAGS = featureFlags;
@@ -55,8 +64,7 @@ public final class Flags \{
     public static void unsetFeatureFlags() \{
         Flags.FEATURE_FLAGS = null;
     }
-{{ -endif }}
-
+{{ endif }}
     private static FeatureFlags FEATURE_FLAGS{{ -if not is_test_mode }} = new FeatureFlagsImpl(){{ -endif- }};
-
+{{ -endif }}
 }

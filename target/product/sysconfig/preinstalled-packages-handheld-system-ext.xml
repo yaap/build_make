@@ -28,4 +28,35 @@
         <install-in user-type="android.os.usertype.profile.PRIVATE" />
         <install-in user-type="android.os.usertype.profile.SUPERVISING" />
     </install-in-user-type>
+
+    <!-- AccessibilityMenu Service (AccessibilityMenu) that provides touchscreen buttons
+        for key system features.
+    -->
+    <install-in-user-type package="com.android.systemui.accessibility.accessibilitymenu">
+        <install-in user-type="FULL" />
+    </install-in-user-type>
+
+    <!-- CarrierConfig (CarrierConfig app) -->
+    <install-in-user-type package="com.android.carrierconfig">
+        <install-in user-type="SYSTEM" />
+        <install-in user-type="FULL" />
+        <install-in user-type="PROFILE" />
+    </install-in-user-type>
+
+    <!-- SystemUI: "everything you see that's not an app™" -->
+    <!-- com.android.systemui needs to be pretty much everywhere: HSU, full and managed users -->
+    <install-in-user-type package="com.android.systemui">
+        <install-in user-type="SYSTEM" />
+        <install-in user-type="FULL" />
+        <install-in user-type="PROFILE" />
+    </install-in-user-type>
+
+    <!-- Quickstep Launcher (Launcher3QuickStep) -->
+    <install-in-user-type package="com.android.launcher3">
+        <!-- TODO(b/456525459): Unfortunately some things (eg recents) look specifically for
+             launcher in user 0
+        -->
+        <install-in user-type="SYSTEM" />
+        <install-in user-type="FULL" />
+    </install-in-user-type>
 </config>

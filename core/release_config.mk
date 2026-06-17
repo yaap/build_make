@@ -16,10 +16,11 @@
 # -----------------------------------------------------------------
 # Determine which pass this is.
 # -----------------------------------------------------------------
-# On the first pass, we are asked for only PRODUCT_RELEASE_CONFIG_MAPS,
-# on the second pass, we are asked for whatever else is wanted.
+# Before PRODUCT_RELEASE_CONFIG_MAPS has been set to its final value,
+# we are called with CALLED_PRE_PRODUCT_CONFIG=true.
+# The final pass will have it unset/empty.
 _final_product_config_pass:=
-ifneq (PRODUCT_RELEASE_CONFIG_MAPS,$(DUMP_MANY_VARS))
+ifeq (,$(CALLED_PRE_PRODUCT_CONFIG))
     _final_product_config_pass:=true
 endif
 
@@ -63,11 +64,16 @@ _protobuf_map_files := build/release/release_config_map.textproto \
 
 # PRODUCT_RELEASE_CONFIG_MAPS is set by Soong using an initial run of product
 # config to capture only the list of config maps needed by the build.
-# Keep them in the order provided, but remove duplicates.
-# Treat any .mk file as an error, since those have not worked since ap3a.
+# - Keep them in the order provided, but remove duplicates.
+# - Treat any .mk file as an error, since those have not worked since ap3a.
+# - Additionally, the release config map filename **must** be
+#   `release_config_map.textproto`, because finder looks for those files so that
+#   we can correctly build release config artifacts.
 $(foreach map,$(PRODUCT_RELEASE_CONFIG_MAPS), \
     $(if $(filter $(basename $(map)).mk,$(map)),\
         $(error $(map): use of release_config_map.mk files is not supported))\
+    $(if $(filter-out release_config_map.textproto,$(notdir $(map))),\
+        $(error $(map): must be named release_config_map.textproto))\
     $(if $(filter $(basename $(map)),$(basename $(_protobuf_map_files))),, \
         $(eval _protobuf_map_files += $(map))) \
 )
@@ -128,6 +134,7 @@ ifneq (,$(_final_product_config_pass))
     ifneq (,$(_disallow_lunch_use))
         $(error Release config ${TARGET_RELEASE} is disallowed for build.  Please use one of: $(ALL_RELEASE_CONFIGS_FOR_PRODUCT))
     endif
+    $(KATI_shell_no_rerun rm -f $(OUT_DIR)/release-config.${TARGET_PRODUCT}.out)
 else
     # This is the first pass of product config.
     $(eval include $(_flags_varmk))

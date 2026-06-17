@@ -15,6 +15,11 @@
 #
 
 # Base modules and settings for the system partition.
+#
+# When adding a module to this list, you must also add it to the deps of the system_image_defaults
+# module in target/product/generic/Android.bp. See tools/filelistdiff/README.md for more details.
+#
+# LINT.IfChange
 PRODUCT_PACKAGES += \
     abx \
     aconfigd-system \
@@ -27,8 +32,10 @@ PRODUCT_PACKAGES += \
     android.test.base \
     android.test.mock \
     android.test.runner \
+    aoad \
     apexd \
     apexd.mainline_patch_level_2 \
+    app-lock-exempt.xml \
     appops \
     app_process \
     appwidget \
@@ -47,6 +54,7 @@ PRODUCT_PACKAGES += \
     bugreport \
     bugreportz \
     build_flag_system \
+    casefolding_remover \
     cgroups.json \
     charger \
     cmd \
@@ -56,6 +64,7 @@ PRODUCT_PACKAGES += \
     com.android.bt \
     com.android.configinfrastructure \
     com.android.conscrypt \
+    com.android.crashrecovery \
     com.android.devicelock \
     com.android.extservices \
     com.android.healthfitness \
@@ -75,6 +84,7 @@ PRODUCT_PACKAGES += \
     com.android.sdkext \
     com.android.tethering \
     $(RELEASE_PACKAGE_TZDATA_MODULE) \
+    com.android.uprobestats \
     com.android.uwb \
     com.android.virt \
     com.android.wifi \
@@ -95,6 +105,7 @@ PRODUCT_PACKAGES += \
     E2eeContactKeysProvider \
     e2fsck \
     enhanced-confirmation.xml \
+    evemu-record \
     ExtShared \
     flags_health_check \
     framework-graphics \
@@ -112,6 +123,7 @@ PRODUCT_PACKAGES += \
     gsi_tool \
     heapprofd \
     heapprofd_client \
+    hidservice \
     gatekeeperd \
     gpuservice \
     hid \
@@ -133,6 +145,7 @@ PRODUCT_PACKAGES += \
     iptables \
     javax.obex \
     kcmdlinectrl \
+    kcmdlinemodprobe \
     keystore2 \
     credstore \
     ld.mc \
@@ -148,11 +161,8 @@ PRODUCT_PACKAGES += \
     libbinder \
     libbinder_ndk \
     libbinder_rpc_unstable \
-    libc.bootstrap \
     libcamera2ndk \
     libcutils \
-    libdl.bootstrap \
-    libdl_android.bootstrap \
     libdrmframework \
     libdrmframework_jni \
     libEGL \
@@ -174,7 +184,6 @@ PRODUCT_PACKAGES += \
     libjnigraphics \
     libjpeg \
     liblog \
-    libm.bootstrap \
     libmedia \
     libmedia_jni \
     libmediandk \
@@ -210,7 +219,6 @@ PRODUCT_PACKAGES += \
     libvintf_jni \
     libvulkan \
     libwilhelm \
-    linker \
     llkd \
     llndk_libs \
     lmkd \
@@ -222,13 +230,14 @@ PRODUCT_PACKAGES += \
     lshal \
     mdnsd \
     mediacodec.policy \
+    mediacodeclist_generator \
     mediaextractor \
-    mediametrics \
     media_profiles_V1_0.dtd \
-    MediaProviderLegacy \
     mediaserver \
     mke2fs \
     mkfs.erofs \
+    mm_daemon \
+    mm_daemon_setup \
     monkey \
     misctrl \
     mtectrl \
@@ -264,7 +273,6 @@ PRODUCT_PACKAGES += \
     screencap \
     sdcard \
     secdiscard \
-    SecureElement \
     selinux_policy_system \
     sensorservice \
     service \
@@ -299,34 +307,23 @@ PRODUCT_PACKAGES += \
     voip-common \
     vold \
     watchdogd \
-    wificond \
     wifi.rc \
     wm \
+# LINT.ThenChange(/target/product/generic/Android.bp)
 
 ifeq ($(RELEASE_CROSS_DEVICE_SYNC),true)
   PRODUCT_PACKAGES += \
         CrossDeviceSync
 endif
 
-# Once Telecom is APEX, we will consolidate all deps
-ifeq ($(RELEASE_TELECOM_MAINLINE_MODULE),true)
-  PRODUCT_PACKAGES += \
-      com.android.telecom \
+# This is the telecom cmd binary, NOT Telecom APK.
+PRODUCT_PACKAGES += \
+    telecom
 
-else
+# Once framework-telecom is APEX, the code will be included there.
+ifneq ($(RELEASE_TELECOM_MAINLINE_MODULE),true)
   PRODUCT_PACKAGES += \
-      telecom \
-
-endif
-
-# When we release crashrecovery module
-ifeq ($(RELEASE_CRASHRECOVERY_MODULE),true)
-  PRODUCT_PACKAGES += \
-        com.android.crashrecovery \
-
-else
-  PRODUCT_PACKAGES += \
-    framework-platformcrashrecovery \
+      framework-telecom
 
 endif
 
@@ -337,16 +334,10 @@ ifneq ($(RELEASE_ONDEVICE_INTELLIGENCE_MODULE),true)
 
 endif
 
-
-# When we release uprobestats module
-ifeq ($(RELEASE_UPROBESTATS_MODULE),true)
-    PRODUCT_PACKAGES += \
-        com.android.uprobestats \
-
-else
-    PRODUCT_PACKAGES += \
-        uprobestats \
-        libuprobestats_client \
+# Non-updatable NSC classes. Replaced by framework-conscrypt-nsc.
+ifneq ($(RELEASE_CONSCRYPT_NSC),true)
+  PRODUCT_PACKAGES += \
+        framework-network-security-config \
 
 endif
 
@@ -385,13 +376,6 @@ ifeq ($(RELEASE_USE_WEBVIEW_BOOTSTRAP_MODULE),true)
         com.android.webview.bootstrap
 endif
 
-# Only add the jar when it is not in the Tethering module. Otherwise,
-# it will be added via com.android.tethering
-ifneq ($(RELEASE_MOVE_VCN_TO_MAINLINE),true)
-    PRODUCT_PACKAGES += \
-        framework-connectivity-b
-endif
-
 ifeq ($(RELEASE_TELEPHONY_MODULE),true)
     PRODUCT_PACKAGES += \
        com.android.telephonycore
@@ -401,17 +385,41 @@ else
         framework-platformtelephony
 endif
 
+ifeq ($(RELEASE_NPUMANAGER_MODULE),true)
+    PRODUCT_PACKAGES += \
+       com.android.npumanager \
+       libnpumanager
+endif
+
+ifeq ($(RELEASE_WEBAPP_MODULE),true)
+    PRODUCT_PACKAGES += \
+       com.android.webapp
+endif
+
+ifeq ($(RELEASE_BETTERTOGETHER_MODULE),true)
+    PRODUCT_PACKAGES += \
+       com.android.bettertogether
+endif
+
+# include in framework regardless of flag, so that we have overlap
+# while moving from framework to module in the event of a module mismatch.
+# the relevant mediametrics.*rc files properly handle presence of both.
+ifeq ($(RELEASE_MEDIAMETRICS_MODULE),true)
+    PRODUCT_PACKAGES += \
+        mediametrics
+else
+    PRODUCT_PACKAGES += \
+        mediametrics
+endif
+
 ifneq (,$(RELEASE_RANGING_STACK))
     PRODUCT_PACKAGES += \
         com.android.ranging
 endif
 
-ifeq ($(RELEASE_MEMORY_MANAGEMENT_DAEMON),true)
+ifeq ($(RELEASE_PROCESS_MEMORY_GUARDIAN_DAEMON),true)
   PRODUCT_PACKAGES += \
-        mm_daemon
-else
-  PRODUCT_PACKAGES += \
-        init-mmd-prop.rc
+        pmg_daemon
 endif
 
 # VINTF data for system image
@@ -427,9 +435,38 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     hwservicemanager_compat_symlink_module \
 
+# wificond is now installed on system_ext, but some callers may still expect
+# it to be installed on system. This symlink can be removed once we are sure
+# that there are no devices using wificond.
+PRODUCT_PACKAGES += \
+    wificond_compat_symlink_module \
+
+# Prevent timeouts to check availability of hwservicmanager during boot
+PRODUCT_SYSTEM_PROPERTIES += hwservicemanager.always_sets_disabled=true
+
 PRODUCT_PACKAGES_ARM64 := libclang_rt.hwasan \
- libclang_rt.hwasan.bootstrap \
  libc_hwasan \
+
+# Bionic
+ifeq ($(RELEASE_DEPRECATE_RUNTIME_APEX),true)
+PRODUCT_PACKAGES += \
+    libc \
+    libdl \
+    libm \
+    libdl_android \
+    linker \
+    linkerconfig \
+    crash_dump
+else
+PRODUCT_PACKAGES += \
+    libc.bootstrap \
+    libdl.bootstrap \
+    libm.bootstrap \
+    libdl_android.bootstrap \
+    linker
+PRODUCT_PACKAGES_ARM64 += \
+    libclang_rt.hwasan.bootstrap
+endif # RELEASE_DEPRECATE_RUNTIME_APEX
 
 # Jacoco agent JARS to be built and installed, if any.
 ifeq ($(EMMA_INSTRUMENT),true)
@@ -523,6 +560,12 @@ PRODUCT_PACKAGES += init.zygote32.rc
 PRODUCT_SYSTEM_PROPERTIES += debug.atrace.tags.enableflags=0
 PRODUCT_SYSTEM_PROPERTIES += persist.traced.enable=1
 PRODUCT_SYSTEM_PROPERTIES += ro.surface_flinger.game_default_frame_rate_override=60
+PRODUCT_SYSTEM_PROPERTIES += persist.pcc.audit_mode.enabled=0
+PRODUCT_SYSTEM_PROPERTIES += persist.pcc.audit_mode.max_log_files=10
+PRODUCT_SYSTEM_PROPERTIES += persist.pcc.audit_mode.max_log_file_size_kb=10240
+PRODUCT_SYSTEM_PROPERTIES += persist.pcc.audit_mode.batching.enabled=1
+PRODUCT_SYSTEM_PROPERTIES += persist.pcc.audit_mode.batching.max_batch_size=100
+PRODUCT_SYSTEM_PROPERTIES += persist.pcc.audit_mode.batching.flush_time_ms=10000
 
 # When the flag RELEASE_ADBD_OPEN_VSOCK_PORT is enabled, open adbd on vsock port 8382 as default.
 ifneq ($(RELEASE_ADBD_OPEN_VSOCK_PORT),)
@@ -539,7 +582,6 @@ PRODUCT_PACKAGES_DEBUG := \
     adevice_fingerprint \
     arping \
     dmuserd \
-    evemu-record \
     idlcli \
     init-debug.rc \
     iotop \
@@ -602,7 +644,23 @@ endif
 
 ifneq (,$(RELEASE_NATIVE_FRAMEWORK_PROTOTYPE))
     PRODUCT_PACKAGES += \
+        libandroid_native_denylist \
         zygote_next
+endif
+
+# Whether to use Java or new native (Rust) OMAPI implementation
+ifeq ($(RELEASE_NATIVE_OMAPI),true)
+    PRODUCT_PACKAGES += \
+        omapi
+else
+    PRODUCT_PACKAGES += \
+        SecureElement
+endif
+
+ifneq (,$(RELEASE_AISEAL_FRAMEWORK))
+    PRODUCT_PACKAGES += \
+        aisealhostservice \
+        AppSearchAiSealConfig
 endif
 
 $(call inherit-product, $(SRC_TARGET_DIR)/product/runtime_libart.mk)

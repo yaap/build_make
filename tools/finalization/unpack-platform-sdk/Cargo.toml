@@ -1,0 +1,11 @@
+[package]
+name = "unpack-platform-sdk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { path = "../../../../../external/rust/android-crates-io/crates/anyhow" }
+clap = { path = "../../../../../external/rust/android-crates-io/crates/clap", features = ["derive"] }
+regex = { path = "../../../../../external/rust/android-crates-io/crates/regex" }
+walkdir = { path = "../../../../../external/rust/android-crates-io/crates/walkdir" }
+zip = { path = "../../../../../external/rust/android-crates-io/crates/zip" }

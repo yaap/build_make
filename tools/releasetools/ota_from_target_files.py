@@ -147,7 +147,13 @@ Non-A/B OTA specific options
 A/B OTA specific options
 
   --disable_fec_computation
-      Disable the on device FEC data computation for incremental updates. OTA will be larger but installation will be faster.
+      Disable the on device FEC data computation for incremental updates. OTA will be larger but installation will be faster. (default)
+
+  --disable_verity_computation
+      Disable the on device verity data computation for incremental updates. OTA will be larger but installation will be faster.
+  --enable_fec_computation
+      Enable the on device FEC data computation for incremental updates.
+      OTA will be smaller but installation will be slower.
 
   --include_secondary
       Additionally include the payload for secondary slot images (default:
@@ -240,6 +246,12 @@ A/B OTA specific options
   --enable_puffdiff
       Whether to enable to puffdiff feature. Will generate smaller OTA but uses more memory, OTA generation will take longer.
 
+  --enable_replace_zstd=<true|false>
+      Whether to enable zstd compression for replace. Defaults to false.
+
+  --disable_replace_compression
+      Whether to disable compression for replace. Defaults to false.
+
   --enable_lz4diff
       Whether to enable lz4diff feature. Will generate smaller OTA for EROFS but
       uses more memory.
@@ -268,6 +280,8 @@ A/B OTA specific options
   --full_ota_partitions
       Specify list of partitions should be updated in full OTA fashion, even if
       an incremental OTA is about to be generated
+  --disable_ublk
+      Disable ublk based OTA forcing to use dm-user even though device is ublk enabled.
 """
 
 from __future__ import print_function
@@ -321,7 +335,7 @@ OPTIONS.log_diff = None
 OPTIONS.extracted_input = None
 OPTIONS.skip_postinstall = False
 OPTIONS.skip_compatibility_check = False
-OPTIONS.disable_fec_computation = False
+OPTIONS.disable_fec_computation = True
 OPTIONS.disable_verity_computation = False
 OPTIONS.partial = None
 OPTIONS.custom_images = {}
@@ -340,6 +354,9 @@ OPTIONS.max_threads = None
 OPTIONS.vabc_cow_version = None
 OPTIONS.compression_factor = None
 OPTIONS.full_ota_partitions = None
+OPTIONS.disable_ublk = False
+OPTIONS.enable_replace_zstd = False
+OPTIONS.disable_replace_compression = False
 
 
 POSTINSTALL_CONFIG = 'META/postinstall_config.txt'
@@ -1098,6 +1115,13 @@ def GenerateAbOtaPackage(target_file, output_file, source_file=None):
 
   if OPTIONS.enable_vabc_xor:
     additional_args += ["--enable_vabc_xor=true"]
+  if OPTIONS.disable_replace_compression:
+    if OPTIONS.enable_replace_zstd:
+      logger.warning("--disable_replace_compression is set, disabling replace zstd")
+      OPTIONS.enable_replace_zstd = False
+    additional_args += ["--disable_replace_compression=true"]
+  elif OPTIONS.enable_replace_zstd:
+    additional_args += ["--enable_replace_zstd=true"]
   if OPTIONS.compressor_types:
     additional_args += ["--compressor_types", OPTIONS.compressor_types]
   additional_args += ["--max_timestamp", max_timestamp]
@@ -1229,7 +1253,11 @@ def main(argv):
     elif o == "--output_metadata_path":
       OPTIONS.output_metadata_path = a
     elif o == "--disable_fec_computation":
+      # This is now the default behavior. This flag is kept for backward
+      # compatibility.
       OPTIONS.disable_fec_computation = True
+    elif o == "--enable_fec_computation":
+      OPTIONS.disable_fec_computation = False
     elif o == "--disable_verity_computation":
       OPTIONS.disable_verity_computation = True
     elif o == "--force_non_ab":
@@ -1304,6 +1332,14 @@ def main(argv):
     elif o == "--full_ota_partitions":
       OPTIONS.full_ota_partitions = set(
           a.strip().strip("\"").strip("'").split(","))
+    elif o == "--disable_ublk":
+      OPTIONS.disable_ublk = True
+    elif o == "--enable_replace_zstd":
+      assert a.lower() in ["true", "false"], \
+          "Cannot parse value %r for option %r - expecting 'true' or 'false'" % (a, o)
+      OPTIONS.enable_replace_zstd = a.lower() != "false"
+    elif o == "--disable_replace_compression":
+      OPTIONS.disable_replace_compression = True
     else:
       return False
     return True
@@ -1335,6 +1371,7 @@ def main(argv):
                                  "skip_compatibility_check",
                                  "output_metadata_path=",
                                  "disable_fec_computation",
+                                 "enable_fec_computation",
                                  "disable_verity_computation",
                                  "force_non_ab",
                                  "boot_variable_file=",
@@ -1355,6 +1392,9 @@ def main(argv):
                                  "vabc_cow_version=",
                                  "compression_factor=",
                                  "full_ota_partitions=",
+                                 "disable_ublk",
+                                 "enable_replace_zstd=",
+                                 "disable_replace_compression",
                              ], extra_option_handler=[option_handler, payload_signer.signer_options])
   common.InitLogging()
 
@@ -1374,17 +1414,22 @@ def main(argv):
   else:
     OPTIONS.info_dict = common.LoadInfoDict(args[0])
 
+  target_info = common.BuildInfo(OPTIONS.info_dict, OPTIONS.oem_dicts)
+  if not target_info.supports_ublk:
+    logger.info("Target build does not support ublk, disabling ublk")
+    OPTIONS.disable_ublk = True
+
   if OPTIONS.wipe_user_data:
-    if not OPTIONS.vabc_downgrade:
-      logger.info("Detected downgrade/datawipe OTA."
-                  "When wiping userdata, VABC OTA makes the user "
-                  "wait in recovery mode for merge to finish. Disable VABC by "
-                  "default. If you really want to do VABC downgrade, pass "
-                  "--vabc_downgrade")
+    if target_info.vendor_api_level < 33 and not OPTIONS.vabc_downgrade:
+      logger.info("Detected a data wipe OTA to a build older than android T."
+                  "For data wiping OTAs (which includes downgrade OTA), merge must be performed"
+                  "in recovery. In older version of VABC, merge can be really slow if a large"
+                  "chunk of blocks gets shifted by 1 block offset, so we fall back on regular VAB")
       OPTIONS.disable_vabc = True
-    # We should only allow downgrading incrementals (as opposed to full).
-    # Otherwise the device may go back from arbitrary build with this full
-    # OTA package.
+
+  # We should only allow downgrading incrementals (as opposed to full).
+  # Otherwise the device may go back from arbitrary build with this full
+  # OTA package.
   if OPTIONS.incremental_source is None and OPTIONS.downgrade:
     raise ValueError("Cannot generate downgradable full OTAs")
 
@@ -1500,6 +1545,11 @@ def main(argv):
                        " detected. Please only pass in this flag if you want a"
                        " SPL downgrade. Target SPL: {} Source SPL: {}"
                        .format(target_spl, source_spl))
+  if OPTIONS.disable_ublk:
+    logger.info("Disabling UBLK as requested")
+    args[0] = ModifyTargetFilesDynamicPartitionInfo(
+        args[0], "disable_ublk", "true")
+
   if generate_ab:
     GenerateAbOtaPackage(
         target_file=args[0],
@@ -1524,7 +1574,7 @@ def main(argv):
       target_files_diff.recursiveDiff(
           '', source_dir, target_dir, out_file)
 
-  logger.info("done.")
+  logger.info("done. %s", args[1])
 
 
 if __name__ == '__main__':

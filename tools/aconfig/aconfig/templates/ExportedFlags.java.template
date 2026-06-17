@@ -6,15 +6,20 @@ import android.util.Log;
 public final class ExportedFlags \{
 {{ -for item in flag_elements}}
     public static final String FLAG_{item.flag_name_constant_suffix} = "{item.device_config_flag}";
-{{- endfor }}
+{{ -endfor }}
     private static final String TAG = "ExportedFlags";
     private static volatile boolean isCached = false;
 {{ for flag in flag_elements }}
     private static boolean {flag.method_name} = false;
 {{ -endfor }} {#- end flag_elements #}
+
     private ExportedFlags() \{}
 
     private void init() \{
+        if (Build.VERSION.SDK_INT <= 35) \{
+            // Skip init, since flag infrastructure is introduced in 36
+            return;
+        }
         try \{
             AconfigPackage reader = AconfigPackage.load("{package_name}");
             {{ -for namespace_with_flags in namespace_flags }}
@@ -33,8 +38,12 @@ public final class ExportedFlags \{
         }
         isCached = true;
     }
-
-{{ -for flag in flag_elements }}
+{{ for flag in flag_elements }}
+    {{ -if generate_checks_sdk_annotation }}
+    {{ -if flag.finalized_sdk_present }}
+    {flag.finalized_sdk_annotation|unescaped}
+    {{ -endif}}  {#- end finalized_sdk_present #}
+    {{ -endif}}  {#- end generate_checks_sdk_annotation #}
     public static boolean {flag.method_name}() \{
         {{ -if flag.finalized_sdk_present }}
         if ({flag.finalized_sdk_check|unescaped}) \{
@@ -46,6 +55,6 @@ public final class ExportedFlags \{
         }
         return featureFlags.{flag.method_name};
     }
-{{ -endfor }}
+{{ endfor }}
     private static ExportedFlags featureFlags = new ExportedFlags();
 }

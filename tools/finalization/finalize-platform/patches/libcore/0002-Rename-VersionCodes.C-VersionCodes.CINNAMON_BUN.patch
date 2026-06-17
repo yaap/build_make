@@ -1,0 +1,517 @@
+From cf3925b8458fc58d2f6da3820fc0826720a609b7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Mon, 9 Feb 2026 14:28:24 +0000
+Subject: [PATCH 2/2] Rename VersionCodes.C -> VersionCodes.CINNAMON_BUN
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: Ia5e338bf15ad6812d95953b970200ef045f65d3d
+---
+ .../harmony/tests/java/util/ScannerTest.java  | 32 +++++++++----------
+ .../main/java/dalvik/system/VMRuntime.java    |  2 +-
+ .../java/util/CurrencyTest.java               |  2 +-
+ .../java/libcore/java/lang/RecordTest.java    |  2 +-
+ .../java/libcore/java/lang/ThreadTest.java    |  2 +-
+ .../libcore/java/lang/reflect/FieldTest.java  |  8 ++---
+ .../java/text/OldNumberFormatTest.java        |  8 ++---
+ .../java/text/SimpleDateFormatTest.java       |  2 +-
+ .../time/format/DateTimeFormatterTest.java    |  2 +-
+ ojluni/src/main/java/java/lang/Runtime.java   |  2 +-
+ ojluni/src/main/java/java/lang/Thread.java    |  4 +--
+ .../src/main/java/java/util/SequencedMap.java | 24 +++++++-------
+ .../tck/java/time/chrono/TCKChronology.java   |  2 +-
+ .../java/time/chrono/TestEraDisplayName.java  |  2 +-
+ .../java/time/format/TestNonIsoFormatter.java |  2 +-
+ .../time/format/TestUnicodeExtension.java     |  4 +--
+ 16 files changed, 50 insertions(+), 50 deletions(-)
+
+diff --git a/harmony-tests/src/test/java/org/apache/harmony/tests/java/util/ScannerTest.java b/harmony-tests/src/test/java/org/apache/harmony/tests/java/util/ScannerTest.java
+index 0f383d9a5fb..6c62a0fa3a0 100644
+--- a/harmony-tests/src/test/java/org/apache/harmony/tests/java/util/ScannerTest.java
++++ b/harmony-tests/src/test/java/org/apache/harmony/tests/java/util/ScannerTest.java
+@@ -1048,7 +1048,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextInt(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextIntI() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(123, s.nextInt(10));
+@@ -1222,7 +1222,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextInt()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextInt() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(123, s.nextInt());
+@@ -1633,7 +1633,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextBigInteger(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextBigIntegerI() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(new BigInteger("123"), s.nextBigInteger(10));
+@@ -1761,7 +1761,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextBigInteger()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextBigInteger() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(new BigInteger("123"), s.nextBigInteger());
+@@ -1892,7 +1892,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextShort(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextShortI() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(123, s.nextShort(10));
+@@ -2028,7 +2028,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextShort()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextShort() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(123, s.nextShort());
+@@ -2167,7 +2167,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextLong(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextLongI() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(123, s.nextLong(10));
+@@ -2303,7 +2303,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#nextLong()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_nextLong() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(123, s.nextLong());
+@@ -2910,7 +2910,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextBigInteger(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextBigIntegerI() throws IOException {
+         s = new Scanner("123 456");
+         assertTrue(s.hasNextBigInteger(10));
+@@ -3096,7 +3096,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextBigInteger()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextBigInteger() throws IOException {
+         s = new Scanner("123 456");
+         assertTrue(s.hasNextBigInteger());
+@@ -3252,7 +3252,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextInt(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextIntI() throws IOException {
+         s = new Scanner("123 456");
+         assertEquals(123, s.nextInt(10));
+@@ -3449,7 +3449,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextInt()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextInt() throws IOException {
+         s = new Scanner("123 456");
+         assertTrue(s.hasNextInt());
+@@ -3730,7 +3730,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextShort(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextShortI() throws IOException {
+         s = new Scanner("123 456");
+         assertTrue(s.hasNextShort(10));
+@@ -3893,7 +3893,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextShort()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextShort() throws IOException {
+         s = new Scanner("123 456");
+         assertTrue(s.hasNextShort());
+@@ -4092,7 +4092,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextLong(int)
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextLongI() throws IOException {
+         s = new Scanner("123 456");
+         assertTrue(s.hasNextLong(10));
+@@ -4289,7 +4289,7 @@ public class ScannerTest extends TestCase {
+      * @throws IOException
+      * @tests java.util.Scanner#hasNextLong()
+      */
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_hasNextLong() throws IOException {
+         s = new Scanner("123 456");
+         assertTrue(s.hasNextLong());
+diff --git a/libart/src/main/java/dalvik/system/VMRuntime.java b/libart/src/main/java/dalvik/system/VMRuntime.java
+index 63794476da6..f2c537c066a 100644
+--- a/libart/src/main/java/dalvik/system/VMRuntime.java
++++ b/libart/src/main/java/dalvik/system/VMRuntime.java
+@@ -112,7 +112,7 @@ public final class VMRuntime {
+      * Throw UnsatisfiedLinkError when attempting to load a writable file.
+      */
+     @ChangeId
+-    @EnabledSince(targetSdkVersion = VersionCodes.C)
++    @EnabledSince(targetSdkVersion = VersionCodes.CINNAMON_BUN)
+     private static final long THROW_ERROR_FOR_WRITABLE_DCL = 463348571;
+ 
+     /**
+diff --git a/luni/src/test/java/libcore/highmemorytest/java/util/CurrencyTest.java b/luni/src/test/java/libcore/highmemorytest/java/util/CurrencyTest.java
+index 1e6557df2af..841207f78cb 100644
+--- a/luni/src/test/java/libcore/highmemorytest/java/util/CurrencyTest.java
++++ b/luni/src/test/java/libcore/highmemorytest/java/util/CurrencyTest.java
+@@ -47,7 +47,7 @@ public class CurrencyTest {
+     @Parameterized.Parameter(0)
+     public Locale locale;
+ 
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     @Test
+     public void test_currencyCodeIcuConsistency() {
+         String countryCode = locale.getCountry();
+diff --git a/luni/src/test/java/libcore/java/lang/RecordTest.java b/luni/src/test/java/libcore/java/lang/RecordTest.java
+index d2ea7e8f1e2..c752a2ccb3c 100644
+--- a/luni/src/test/java/libcore/java/lang/RecordTest.java
++++ b/luni/src/test/java/libcore/java/lang/RecordTest.java
+@@ -92,7 +92,7 @@ public class RecordTest {
+     }
+ 
+     @Test
+-    @TargetSdkVersion(VersionCodes.C)
++    @TargetSdkVersion(VersionCodes.CINNAMON_BUN)
+     public void gettingRecordFieldOffset_shouldThrow_afterBaklava() throws Throwable {
+         // Check is for C+ only. For compat purposes on older OS version this is allowed.
+         assumeTrue(VMRuntime.getSdkVersion() > VersionCodes.BAKLAVA);
+diff --git a/luni/src/test/java/libcore/java/lang/ThreadTest.java b/luni/src/test/java/libcore/java/lang/ThreadTest.java
+index 0dadd2f69d9..f6d2c5a2438 100644
+--- a/luni/src/test/java/libcore/java/lang/ThreadTest.java
++++ b/luni/src/test/java/libcore/java/lang/ThreadTest.java
+@@ -678,7 +678,7 @@ public final class ThreadTest {
+     @Test
+     @CoreCompatChangeRule.EnableCompatChanges({Thread.OVERRIDDEN_THREAD_START_METHOD})
+     public void testOverriddenThreadStartMethod_changeEnabled() {
+-        assumeTrue(VMRuntime.getSdkVersion() >= VersionCodes.C);
++        assumeTrue(VMRuntime.getSdkVersion() >= VersionCodes.CINNAMON_BUN);
+ 
+         assertOverriddenStartMethodCalled(Executors::newSingleThreadExecutor, false);
+         assertOverriddenStartMethodCalled(Executors::newCachedThreadPool, false);
+diff --git a/luni/src/test/java/libcore/java/lang/reflect/FieldTest.java b/luni/src/test/java/libcore/java/lang/reflect/FieldTest.java
+index 10b118da2b2..d2ae4fe5be6 100644
+--- a/luni/src/test/java/libcore/java/lang/reflect/FieldTest.java
++++ b/luni/src/test/java/libcore/java/lang/reflect/FieldTest.java
+@@ -53,10 +53,10 @@ public final class FieldTest {
+     }
+ 
+     @Test
+-    @TargetSdkVersion(VersionCodes.C)
++    @TargetSdkVersion(VersionCodes.CINNAMON_BUN)
+     public void testSetStaticFinalField_shouldThrow_afterBaklava() throws Exception {
+         // Prior to Android C it was possible to override static final fields.
+-        assumeTrue(VMRuntime.getSdkVersion() >= VersionCodes.C);
++        assumeTrue(VMRuntime.getSdkVersion() >= VersionCodes.CINNAMON_BUN);
+         Field longField = getClass().getDeclaredField("MY_LONG");
+         longField.setAccessible(true);
+ 
+@@ -80,10 +80,10 @@ public final class FieldTest {
+     }
+ 
+     @Test
+-    @TargetSdkVersion(VersionCodes.C)
++    @TargetSdkVersion(VersionCodes.CINNAMON_BUN)
+     public void setWriteProtectedField_shouldThrow_afterBaklava() throws Exception {
+         // Prior to Android C it was possible to override static final fields.
+-        assumeTrue(VMRuntime.getSdkVersion() >= VersionCodes.C);
++        assumeTrue(VMRuntime.getSdkVersion() >= VersionCodes.CINNAMON_BUN);
+ 
+         Field systemIn = System.class.getDeclaredField("in");
+         systemIn.setAccessible(true);
+diff --git a/luni/src/test/java/libcore/java/text/OldNumberFormatTest.java b/luni/src/test/java/libcore/java/text/OldNumberFormatTest.java
+index 7163c80e3c9..9a4de96917c 100644
+--- a/luni/src/test/java/libcore/java/text/OldNumberFormatTest.java
++++ b/luni/src/test/java/libcore/java/text/OldNumberFormatTest.java
+@@ -215,7 +215,7 @@ public class OldNumberFormatTest extends TestCase {
+         assertFalse("Object is equal null", nf1.equals(null));
+     }
+ 
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_formatLdouble() {
+         NumberFormat nf1 = NumberFormat.getInstance(Locale.US);
+ 
+@@ -243,7 +243,7 @@ public class OldNumberFormatTest extends TestCase {
+         // END Android-changed
+     }
+ 
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_formatLlong() {
+         NumberFormat nf1 = NumberFormat.getInstance(Locale.US);
+ 
+@@ -358,7 +358,7 @@ public class OldNumberFormatTest extends TestCase {
+                 "123,456,789", format.format(123456789));
+     }
+ 
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_getInstanceLjava_util_Locale() {
+         Locale de_CH = new Locale("de", "CH");
+         Locale.setDefault(Locale.US);
+@@ -397,7 +397,7 @@ public class OldNumberFormatTest extends TestCase {
+                 "123,456,789", format.format(123456789));
+     }
+ 
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_getNumberInstanceLjava_util_Locale() {
+         Locale.setDefault(Locale.US);
+         Locale deLocale = new Locale("de", "CH");
+diff --git a/luni/src/test/java/libcore/java/text/SimpleDateFormatTest.java b/luni/src/test/java/libcore/java/text/SimpleDateFormatTest.java
+index eda1b627c9a..12a6a129fc1 100644
+--- a/luni/src/test/java/libcore/java/text/SimpleDateFormatTest.java
++++ b/luni/src/test/java/libcore/java/text/SimpleDateFormatTest.java
+@@ -462,7 +462,7 @@ public class SimpleDateFormatTest extends junit.framework.TestCase {
+     }
+ 
+     // http://b/17431155
+-    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.C)
++    @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY, disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_sl_dates() throws Exception {
+         DateFormat df = DateFormat.getDateInstance(DateFormat.SHORT, new Locale("sl"));
+         assertEquals(TimeZone.getDefault(), df.getTimeZone());
+diff --git a/luni/src/test/java/libcore/java/time/format/DateTimeFormatterTest.java b/luni/src/test/java/libcore/java/time/format/DateTimeFormatterTest.java
+index 388827b5cfc..f9fa19deba5 100644
+--- a/luni/src/test/java/libcore/java/time/format/DateTimeFormatterTest.java
++++ b/luni/src/test/java/libcore/java/time/format/DateTimeFormatterTest.java
+@@ -126,7 +126,7 @@ public class DateTimeFormatterTest {
+ 
+     @Test
+     @NonMts(bug = 331729784, reason = NonMtsReasons.ICU_VERSION_DEPENDENCY,
+-            disabledUntilSdk = VersionCodes.C)
++            disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     public void test_format_locale_tok() {
+         Assume.assumeTrue(VersionInfo.ICU_VERSION.getMajor() >= 74);
+ 
+diff --git a/ojluni/src/main/java/java/lang/Runtime.java b/ojluni/src/main/java/java/lang/Runtime.java
+index b1e8584e577..61dd38d3194 100644
+--- a/ojluni/src/main/java/java/lang/Runtime.java
++++ b/ojluni/src/main/java/java/lang/Runtime.java
+@@ -950,7 +950,7 @@ public class Runtime {
+                         file.getName());
+             }
+             // TODO: before the read_only_dynamic_code_load_throw_exception flag is pushed to
+-            // NextFood, we will need to add the if (VMRuntime.getSdkVersion() >= VersionCodes.C)
++            // NextFood, we will need to add the if (VMRuntime.getSdkVersion() >= VersionCodes.CINNAMON_BUN)
+             // check here.
+             if (VMRuntime.isReadOnlyDynamicCodeLoadThrowExceptionEnabled()
+                     && VMRuntime.isThrowErrorForWritableDclEnabled()) {
+diff --git a/ojluni/src/main/java/java/lang/Thread.java b/ojluni/src/main/java/java/lang/Thread.java
+index b544f93ade7..d62327f1a54 100644
+--- a/ojluni/src/main/java/java/lang/Thread.java
++++ b/ojluni/src/main/java/java/lang/Thread.java
+@@ -1449,7 +1449,7 @@ public class Thread implements Runnable {
+      * @hide
+      */
+     @ChangeId
+-    @EnabledSince(targetSdkVersion = VersionCodes.C)
++    @EnabledSince(targetSdkVersion = VersionCodes.CINNAMON_BUN)
+     public static final long OVERRIDDEN_THREAD_START_METHOD = 418924588L;
+ 
+     /**
+@@ -1459,7 +1459,7 @@ public class Thread implements Runnable {
+      */
+     void start(ThreadContainer container) {
+         // Android-changed: App compat with overridden Thread.start() method. http://b/418924588
+-        if (!isVirtual() && !(VMRuntime.getSdkVersion() >= VersionCodes.C
++        if (!isVirtual() && !(VMRuntime.getSdkVersion() >= VersionCodes.CINNAMON_BUN
+                 && Compatibility.isChangeEnabled(Thread.OVERRIDDEN_THREAD_START_METHOD))) {
+             synchronized (this) {
+                 // Disable this check due to app compat http://b/455404369
+diff --git a/ojluni/src/main/java/java/util/SequencedMap.java b/ojluni/src/main/java/java/util/SequencedMap.java
+index 59716044cd6..5a96c605773 100644
+--- a/ojluni/src/main/java/java/util/SequencedMap.java
++++ b/ojluni/src/main/java/java/util/SequencedMap.java
+@@ -300,25 +300,25 @@ public interface SequencedMap<K, V> extends Map<K, V> {
+             public void addLast(K k) { throw new UnsupportedOperationException(); }
+             // BEGIN Android-changed: keep these methods SequencedSet-based if app targets pre C.
+             public K getFirst() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.getFirst();
+                 }
+                 return nsee(SequencedMap.this.firstEntry()).getKey();
+             }
+             public K getLast() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.getLast();
+                 }
+                 return nsee(SequencedMap.this.lastEntry()).getKey();
+             }
+             public K removeFirst() {
+-                if  (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if  (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.removeFirst();
+                 }
+                 return nsee(SequencedMap.this.pollFirstEntry()).getKey();
+             }
+             public K removeLast() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.removeLast();
+                 }
+                 return nsee(SequencedMap.this.pollLastEntry()).getKey();
+@@ -363,25 +363,25 @@ public interface SequencedMap<K, V> extends Map<K, V> {
+             // BEGIN Android-changed: keep these methods SequencedCollection-based if app targets
+             // pre C.
+             public V getFirst() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedCollection.super.getFirst();
+                 }
+                 return nsee(SequencedMap.this.firstEntry()).getValue();
+             }
+             public V getLast() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedCollection.super.getLast();
+                 }
+                 return nsee(SequencedMap.this.lastEntry()).getValue();
+             }
+             public V removeFirst() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedCollection.super.removeFirst();
+                 }
+                 return nsee(SequencedMap.this.pollFirstEntry()).getValue();
+             }
+             public V removeLast() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedCollection.super.removeLast();
+                 }
+                 return nsee(SequencedMap.this.pollLastEntry()).getValue();
+@@ -432,25 +432,25 @@ public interface SequencedMap<K, V> extends Map<K, V> {
+             public void addLast(Map.Entry<K, V> e) { throw new UnsupportedOperationException(); }
+             // BEGIN Android-changed: keep these methods SequencedSet-based if app targets pre C.
+             public Map.Entry<K, V> getFirst() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.getFirst();
+                 }
+                 return nsee(SequencedMap.this.firstEntry());
+             }
+             public Map.Entry<K, V> getLast() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.getLast();
+                 }
+                 return nsee(SequencedMap.this.lastEntry());
+             }
+             public Map.Entry<K, V> removeFirst() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.removeFirst();
+                 }
+                 return nsee(SequencedMap.this.pollFirstEntry());
+             }
+             public Map.Entry<K, V> removeLast() {
+-                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.C) {
++                if (VMRuntime.getRuntime().getTargetSdkVersion() < VersionCodes.CINNAMON_BUN) {
+                     return SequencedSet.super.removeLast();
+                 }
+                 return nsee(SequencedMap.this.pollLastEntry());
+diff --git a/ojluni/src/test/java/time/tck/java/time/chrono/TCKChronology.java b/ojluni/src/test/java/time/tck/java/time/chrono/TCKChronology.java
+index b914a15ed0b..8a4ea103df7 100644
+--- a/ojluni/src/test/java/time/tck/java/time/chrono/TCKChronology.java
++++ b/ojluni/src/test/java/time/tck/java/time/chrono/TCKChronology.java
+@@ -176,7 +176,7 @@ public class TCKChronology {
+     }
+ 
+     @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY,
+-        disabledUntilSdk = VersionCodes.C)
++        disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     @Test(dataProvider = "calendarDisplayName")
+     public void test_getDisplayName(String chronoId, String calendarDisplayName) {
+         Chronology chrono = Chronology.of(chronoId);
+diff --git a/ojluni/src/test/java/time/test/java/time/chrono/TestEraDisplayName.java b/ojluni/src/test/java/time/test/java/time/chrono/TestEraDisplayName.java
+index ca56b2813cf..678aed11ee2 100644
+--- a/ojluni/src/test/java/time/test/java/time/chrono/TestEraDisplayName.java
++++ b/ojluni/src/test/java/time/test/java/time/chrono/TestEraDisplayName.java
+@@ -199,7 +199,7 @@ public class TestEraDisplayName {
+ 
+     // Android-changed: The ICU data is different before ICU version 70. http://b/229960530
+     @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY,
+-            disabledUntilSdk = VersionCodes.C)
++            disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     @Test(dataProvider="eraDisplayName")
+     public void test_eraDisplayName(Era era, TextStyle style, Locale locale, String expected) {
+         assertEquals(era.getDisplayName(style, locale), expected);
+diff --git a/ojluni/src/test/java/time/test/java/time/format/TestNonIsoFormatter.java b/ojluni/src/test/java/time/test/java/time/format/TestNonIsoFormatter.java
+index 250518e97d6..8210f6172fc 100644
+--- a/ojluni/src/test/java/time/test/java/time/format/TestNonIsoFormatter.java
++++ b/ojluni/src/test/java/time/test/java/time/format/TestNonIsoFormatter.java
+@@ -184,7 +184,7 @@ public class TestNonIsoFormatter {
+     }
+ 
+     @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY,
+-        disabledUntilSdk = VersionCodes.C)
++        disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     @Test(dataProvider="chrono_names")
+     public void test_chronoNames(Chronology chrono, Locale locale, String expected) {
+         DateTimeFormatter dtf = new DateTimeFormatterBuilder().appendChronologyText(TextStyle.SHORT)
+diff --git a/ojluni/src/test/java/time/test/java/time/format/TestUnicodeExtension.java b/ojluni/src/test/java/time/test/java/time/format/TestUnicodeExtension.java
+index 3942e85416a..ec2741c280b 100644
+--- a/ojluni/src/test/java/time/test/java/time/format/TestUnicodeExtension.java
++++ b/ojluni/src/test/java/time/test/java/time/format/TestUnicodeExtension.java
+@@ -842,7 +842,7 @@ public class TestUnicodeExtension {
+ 
+     @NonCts(bug = 286802267, reason = NonCtsReasons.CLDR_DATA_DEPENDENCY)
+     @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY,
+-            disabledUntilSdk = VersionCodes.C)
++            disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     @Test(dataProvider="localizedBy")
+     public void test_localizedBy(Locale locale, Chronology chrono, ZoneId zone,
+                                 Chronology chronoExpected, ZoneId zoneExpected,
+@@ -874,7 +874,7 @@ public class TestUnicodeExtension {
+     }
+ 
+     @NonMts(reason = NonMtsReasons.ICU_VERSION_DEPENDENCY,
+-            disabledUntilSdk = VersionCodes.C)
++            disabledUntilSdk = VersionCodes.CINNAMON_BUN)
+     @Test(dataProvider="withLocale")
+     public void test_withLocale(Locale locale, Chronology chrono, ZoneId zone,
+                                 Chronology chronoExpected, ZoneId zoneExpected,
+-- 
+2.53.0.rc2.204.g2597b5adb4-goog
+

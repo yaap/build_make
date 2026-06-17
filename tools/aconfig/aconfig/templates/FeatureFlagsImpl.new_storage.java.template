@@ -12,7 +12,7 @@ import android.os.flagging.AconfigPackageInternal;
 import android.util.Log;
 {{ -endif }} {#- end of runtime_lookup_required#}
 /** @hide */
-public final class FeatureFlagsImpl implements FeatureFlags \{
+{{ if preserve_impl_interface }}public {{ endif }}final class FeatureFlagsImpl implements FeatureFlags \{
 {{ -if runtime_lookup_required }}
     private static final String TAG = "FeatureFlagsImpl";
     private static volatile boolean isCached = false;
@@ -46,10 +46,10 @@ public final class FeatureFlagsImpl implements FeatureFlags \{
         isCached = true;
     }
 {{ -endif }}{#- end of runtime_lookup_required #}
-{{ -for flag in flag_elements }}
+{{ for flag in overridable_flag_elements }}
     @Override
     @com.android.aconfig.annotations.AconfigFlagAccessor
-{{ if support_uau_annotation- }}
+{{ -if support_uau_annotation }}
     @UnsupportedAppUsage
 {{ -endif }}
     public boolean {flag.method_name}() \{
@@ -62,5 +62,5 @@ public final class FeatureFlagsImpl implements FeatureFlags \{
         return {flag.default_value};
 {{ -endif }}  {#- end of is_read_write#}
     }
-{{ endfor }} {#- else flag_elements #}
+{{ endfor- }} {#- else overridable_flag_elements #}
 }

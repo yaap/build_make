@@ -30,7 +30,7 @@ import (
 
 var (
 	installTarget = regexp.MustCompile(`^<file-name contentId="[^"]{32}" lib="([^"]*)">([^<]+)</file-name>`)
-	licenseText = regexp.MustCompile(`^<file-content contentId="[^"]{32}"><![[]CDATA[[]([^]]*)[]][]]></file-content>`)
+	licenseText   = regexp.MustCompile(`^<file-content contentId="[^"]{32}"><![[]CDATA[[]([^]]*)[]][]]></file-content>`)
 )
 
 func TestMain(m *testing.M) {
@@ -670,7 +670,7 @@ type matcher interface {
 
 type target struct {
 	name string
-	lib string
+	lib  string
 }
 
 func (m target) isMatch(line string) bool {
@@ -690,11 +690,11 @@ func matchesText(line, text string) bool {
 	if len(groups) != 2 {
 		return false
 	}
-	return groups[1] == escape(text + "\n")
+	return groups[1] == escape(text+"\n")
 }
 
 func expectedText(text string) string {
-	return `<file-content contentId="hash"><![CDATA[` + escape(text + "\n") + `]]></file-content>`
+	return `<file-content contentId="hash"><![CDATA[` + escape(text+"\n") + `]]></file-content>`
 }
 
 type firstParty struct{}

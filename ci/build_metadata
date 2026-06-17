@@ -18,9 +18,13 @@ set -x
 
 source build/make/shell_utils.sh
 
-export TARGET_PRODUCT=aosp_arm64
-export TARGET_RELEASE=trunk_staging
-export TARGET_BUILD_VARIANT=eng
+# If the environment does not already specify TARGET_PRODUCT, TARGET_RELEASE,
+# and TARGET_BUILD_VARIANT, set them here.
+: ${TARGET_PRODUCT:=aosp_arm64}
+: ${TARGET_RELEASE:=trunk_staging}
+: ${TARGET_BUILD_VARIANT:=eng}
+
+export TARGET_PRODUCT TARGET_RELEASE TARGET_BUILD_VARIANT
 
 import_build_vars \
         OUT_DIR \
@@ -40,14 +44,19 @@ build/soong/bin/m dist ${TARGETS[@]} || exit $?
 # Generate all of the release configs for all of the named products.
 (
   PATH=$(gettop)/build/soong/bin:${PATH}
+  # Allow file location override.
+  : ${BROKEN_PRODUCTS_FILE:=vendor/google/build/broken_products_allowlist.txt}
+  : ${BROKEN_PROJECTS_FILE:=vendor/google/build/broken_projects_rw_dirs.txt}
   args=(--dist --intermediate-dir=${OUT_DIR}/soong/.intermediates/build/soong/scripts/product-configs --json --textproto)
-  if [[ -r vendor/google/build/broken_products_allowlist.txt ]]; then
-      args+=(--skip-file vendor/google/build/broken_products_allowlist.txt)
+  if [[ -r ${BROKEN_PRODUCTS_FILE} ]]; then
+      args+=(--skip-file "${BROKEN_PRODUCTS_FILE}")
   fi
-  if [[ -r vendor/google/build/broken_projects_rw_dirs.txt ]]; then
-      args+=(--rw-dirs-file vendor/google/build/broken_projects_rw_dirs.txt)
+  if [[ -r ${BROKEN_PROJECTS_FILE} ]]; then
+      args+=(--rw-dirs-file "${BROKEN_PROJECTS_FILE}")
   fi
-  ./build/soong/scripts/product-configs ${args[@]}
+  # Use `TARGET_RELEASE=trunk_staging` when running product configs, but allow
+  # it to be overridden separately from the rest of the build.
+  TARGET_RELEASE=${RELEASE_CONFIGS_RELEASE:-trunk_staging} ./build/soong/scripts/product-configs "${args[@]}"
 ) || exit $?
 
 # List all source files in the tree

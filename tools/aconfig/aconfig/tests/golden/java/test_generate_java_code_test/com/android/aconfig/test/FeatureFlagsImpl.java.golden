@@ -1,0 +1,69 @@
+package com.android.aconfig.test;
+
+/** @hide */
+public final class FeatureFlagsImpl implements FeatureFlags {
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRo() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRw() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRwExported() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRwInOtherNamespace() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledFixedRo() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledFixedRoExported() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRo() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRoExported() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRw() {
+        throw new UnsupportedOperationException(
+            "Method is not implemented.");
+    }
+
+}

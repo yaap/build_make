@@ -1,0 +1,73 @@
+// Copyright (C) 2026 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_build",
+}
+
+// Soong API Python Client Library
+// Python Library
+python_library_host {
+    name: "soong_api_client_python_lib",
+    srcs: [
+        "soong_api_client.py",
+        ":soong_api_python_protoc_gen", // Include generated files
+    ],
+    libs: [
+        "libprotobuf-python",
+        "py-grpcio",
+    ],
+}
+
+// Soong API Python Client Example
+python_binary_host {
+    name: "soong_api_client_python_example",
+    srcs: [
+        "soong_api_client_example.py",
+    ],
+    main: "soong_api_client_example.py",
+    libs: [
+        "soong_api_client_python_lib",
+        "libprotobuf-python", // For json_format
+    ],
+}
+
+// Soong API Java Client Library
+java_library_host {
+    name: "soong_api_client_java_lib",
+    srcs: [
+        "src/main/java/com/android/soong/api/client/SoongApiClient.java",
+    ],
+    static_libs: [
+        "soong_api_grpc_proto",
+        "grpc-java",
+        "grpc-java-netty-shaded",
+        "guava",
+        "jsr305", // For Nullable annotations
+    ],
+}
+
+// Soong API Java Client Example
+java_binary_host {
+    name: "soong_api_client_java_example",
+    srcs: [
+        "src/main/java/com/android/soong/api/client/SoongApiClientExample.java",
+    ],
+    main_class: "com.android.soong.api.client.SoongApiClientExample",
+    static_libs: [
+        "soong_api_client_java_lib",
+        "libprotobuf-java-util-full", // For JsonFormat printer
+    ],
+}

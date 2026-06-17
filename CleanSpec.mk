@@ -744,7 +744,7 @@ $(call add-clean-step, rm -rf $(HOST_OUT)/vts-core/*)
 $(call add-clean-step, rm -rf $(HOST_OUT)/framework/vts-core-tradefed.jar)
 $(call add-clean-step, rm -rf $(HOST_OUT)/vts10/*)
 $(call add-clean-step, rm -rf $(HOST_OUT)/framework/vts10-tradefed.jar)
-# Clean up VTS again as VTS-Core will be renamed to VTS 
+# Clean up VTS again as VTS-Core will be renamed to VTS
 $(call add-clean-step, rm -rf $(HOST_OUT)/vts/*)
 $(call add-clean-step, rm -rf $(HOST_OUT)/framework/vts-tradefed.jar)
 
@@ -796,6 +796,9 @@ $(call add-clean-step, rm -rf $(OUT_DIR)/soong/.intermediates)
 
 # Prefer the version of build-flag in build/soong/bin
 $(call add-clean-step, rm -f $(HOST_OUT)/bin/build-flag)
+
+# Remove obsolete grep binary
+$(call add-clean-step, rm -f $(HOST_OUT)/bin/grep)
 
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST

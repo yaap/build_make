@@ -101,12 +101,23 @@ PRODUCT_SYSTEM_SERVER_APPS += \
     InputDevices \
     KeyChain \
 
-ifneq ($(RELEASE_TELECOM_MAINLINE_MODULE),true)
+ifeq ($(RELEASE_TELECOM_MAINLINE_MODULE),true)
+    PRODUCT_PACKAGES += \
+        TelecomShim \
+
+    PRODUCT_SYSTEM_SERVER_APPS += \
+        TelecomShim \
+
+else
   PRODUCT_PACKAGES += \
       Telecom \
+      TelecomUi \
+      TelecomServiceResources \
 
   PRODUCT_SYSTEM_SERVER_APPS += \
       Telecom \
+      TelecomUi \
+      TelecomServiceResources \
 
 endif
 

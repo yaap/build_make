@@ -9,7 +9,7 @@ default = ["cargo"]
 cargo = []
 
 [dependencies]
-anyhow = "1.0.69"
+anyhow = { path = "../../../../../external/rust/android-crates-io/crates/anyhow" }
 paste = "1.0.11"
 protobuf = "3.2.0"
 

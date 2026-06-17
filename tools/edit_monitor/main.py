@@ -19,8 +19,7 @@ import signal
 import sys
 import tempfile
 
-from edit_monitor import daemon_manager
-from edit_monitor import edit_monitor
+from edit_monitor import daemon_manager, edit_monitor
 
 
 def create_arg_parser():
@@ -39,6 +38,14 @@ def create_arg_parser():
       type=str,
       required=True,
       help='Root path to monitor the edit events.',
+  )
+
+  parser.add_argument(
+      '--target_repo',
+      type=str,
+      choices=['android', 'chrome'],
+      default='android',
+      help='Target repository to monitor.',
   )
 
   parser.add_argument(
@@ -63,6 +70,14 @@ def create_arg_parser():
       help=(
           'Log verbose info in the log file for debugging purpose.'
       ),
+  )
+
+  parser.add_argument(
+      '--ignore_file_pattern',
+      action='append',
+      dest='ignore_file_patterns',
+      type=str,
+      help='Patterns to ignore. Can be specified multiple times.',
   )
 
   return parser
@@ -99,7 +114,14 @@ def main(argv: list[str]):
   dm = daemon_manager.DaemonManager(
       binary_path=argv[0],
       daemon_target=edit_monitor.start,
-      daemon_args=(args.path, args.dry_run),
+      daemon_args=(
+          args.path,
+          args.dry_run,
+          args.target_repo,
+          args.ignore_file_patterns,
+      ),
+      target_repo=args.target_repo,
+      is_dry_run=args.dry_run,
   )
 
   try:

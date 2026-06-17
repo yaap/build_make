@@ -7,10 +7,11 @@ edition = "2021"
 default = ["cargo"]
 cargo = []
 default_exported_reads_to_disabled = []
+generate_checks_sdk_annotation = []
 
 [dependencies]
-anyhow = "1.0.69"
-clap = { version = "4.1.8", features = ["derive"] }
+anyhow = { path = "../../../../../external/rust/android-crates-io/crates/anyhow" }
+clap = { path = "../../../../../external/rust/android-crates-io/crates/clap", features = ["derive", "string"] }
 itertools = "0.10.5"
 protobuf = "3.2.0"
 serde = { version = "1.0.152", features = ["derive"] }
@@ -20,9 +21,10 @@ lazy_static = "1.5.0"
 aconfig_protos = { path = "../aconfig_protos" }
 aconfig_storage_file = { path = "../aconfig_storage_file", features = ["test_utils"] }
 convert_finalized_flags = { path = "../convert_finalized_flags" }
+walkdir = "2.5.0"
 
 [build-dependencies]
-anyhow = "1.0.69"
+anyhow = { path = "../../../../../external/rust/android-crates-io/crates/anyhow" }
 itertools = "0.10.5"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.93"
@@ -34,4 +36,7 @@ check-cfg = [
     "cfg(enable_fingerprint_rust)",
     "cfg(enable_fingerprint_cpp)",
     "cfg(enable_jarjar_flags_in_framwork)",
+    "cfg(enable_parse_v4)",
+    "cfg(optimize_read_only_java)",
+    "cfg(default_allow_java_impl_interface_removal)",
 ]

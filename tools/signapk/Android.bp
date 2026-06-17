@@ -38,9 +38,14 @@ java_binary_host {
     jni_libs: ["libconscrypt_openjdk_jni"],
 
     // The post-build signing tools need signapk.jar (and its shared libraries,
-    // handled in their own Android.bp files)
+    // handled in their own Android.bp files).  Also dist for
+    // sdk-repo-build-tools, signapk is in prebuilts/tools/sdk/lib but not part
+    // of the official SDK distributions.
     dist: {
         tag: ".jar",
-        targets: ["droidcore"],
+        targets: [
+            "droidcore",
+            "sdk-repo-build-tools",
+        ],
     },
 }

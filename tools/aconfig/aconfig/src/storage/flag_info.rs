@@ -26,8 +26,11 @@ fn new_header(container: &str, num_flags: u32, version: u32) -> FlagInfoHeader {
         container: String::from(container),
         file_type: StorageFileType::FlagInfo as u8,
         file_size: 0,
-        num_flags,
+        num_boolean_flags: num_flags,
         boolean_flag_offset: 0,
+        // TODO(b/439864800): Populate int information when v4+.
+        num_int_flags: 0,
+        int_flag_offset: 0,
     }
 }
 
@@ -42,9 +45,10 @@ pub fn create_flag_info(
         package.boolean_flags.retain(|b| should_include_flag(b));
     }
 
-    let num_flags = filtered_packages.iter().map(|pkg| pkg.boolean_flags.len() as u32).sum();
+    let num_boolean_flags =
+        filtered_packages.iter().map(|pkg| pkg.boolean_flags.len() as u32).sum();
 
-    let mut is_flag_rw = vec![false; num_flags as usize];
+    let mut is_flag_rw = vec![false; num_boolean_flags as usize];
     for pkg in filtered_packages {
         let start_index = pkg.boolean_start_index as usize;
         let flag_ids = assign_flag_ids(pkg.package_name, pkg.boolean_flags.iter().copied())?;
@@ -58,14 +62,17 @@ pub fn create_flag_info(
     }
 
     let mut list = FlagInfoList {
-        header: new_header(container, num_flags, version),
-        nodes: is_flag_rw.iter().map(|&rw| FlagInfoNode::create(rw)).collect(),
+        header: new_header(container, num_boolean_flags, version),
+        boolean_nodes: is_flag_rw.iter().map(|&rw| FlagInfoNode::create(rw)).collect(),
+        // TODO(b/439864800): Populate int information when v4+.
+        int_nodes: vec![],
     };
 
     // initialize all header fields
     list.header.boolean_flag_offset = list.header.into_bytes().len() as u32;
     let bytes_per_node = FlagInfoNode::create(false).into_bytes().len() as u32;
-    list.header.file_size = list.header.boolean_flag_offset + num_flags * bytes_per_node;
+    // TODO(b/439864800): Populate int information when v4+.
+    list.header.file_size = list.header.boolean_flag_offset + num_boolean_flags * bytes_per_node;
 
     Ok(list)
 }

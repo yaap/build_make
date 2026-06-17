@@ -22,6 +22,7 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/base_system_ext.mk)
 
 PRODUCT_PACKAGES += \
     StatementService \
+    preinstalled-packages-media-system-ext.xml \
 
 # Window Extensions
 ifneq ($(PRODUCT_IS_ATV),true)

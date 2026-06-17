@@ -34,6 +34,11 @@ pub mod auto_generated {
     pub fn enable_aconfigd_from_mainline() -> bool {
         aconfig_flags_rust::enable_only_new_storage()
     }
+
+    /// Returns the value for the aflags_list_mainline_beta flag.
+    pub fn aflags_list_mainline_beta() -> bool {
+        aconfig_flags_rust::aflags_list_mainline_beta()
+    }
 }
 
 /// Module used when building with cargo
@@ -41,6 +46,12 @@ pub mod auto_generated {
 pub mod auto_generated {
     /// Returns a placeholder value for the enable_aconfigd_from_mainline flag.
     pub fn enable_aconfigd_from_mainline() -> bool {
+        // Used only to enable typechecking and testing with cargo
+        true
+    }
+
+    /// Returns the value for the aflags_list_mainline_beta flag.
+    pub fn aflags_list_mainline_beta() -> bool {
         // Used only to enable typechecking and testing with cargo
         true
     }

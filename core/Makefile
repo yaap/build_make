@@ -7,17 +7,8 @@ $(info [$(include_makefiles_total)/$(include_makefiles_total)] finishing Make pa
 LOCAL_PATH := $(BUILD_SYSTEM)
 
 SYSTEM_NOTICE_DEPS :=
-VENDOR_NOTICE_DEPS :=
 UNMOUNTED_NOTICE_DEPS :=
 UNMOUNTED_NOTICE_VENDOR_DEPS :=
-ODM_NOTICE_DEPS :=
-OEM_NOTICE_DEPS :=
-PRODUCT_NOTICE_DEPS :=
-SYSTEM_EXT_NOTICE_DEPS :=
-VENDOR_DLKM_NOTICE_DEPS :=
-ODM_DLKM_NOTICE_DEPS :=
-SYSTEM_DLKM_NOTICE_DEPS :=
-
 
 # IMAGES_TO_BUILD is a list of the partition .img files that will be created.
 IMAGES_TO_BUILD:=
@@ -295,6 +286,10 @@ ifneq ($(BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT),true)
 INSTALLED_RECOVERYIMAGE_TARGET := $(PRODUCT_OUT)/recovery.img
 endif
 endif
+endif
+
+ifeq ($(BOARD_USES_PVMFWIMAGE),true)
+INSTALLED_PVMFWIMAGE_TARGET := $(PRODUCT_OUT)/pvmfw.img
 endif
 
 # Do this early because sysprop.mk depends on BUILT_KERNEL_VERSION_FILE_FOR_UFFD_GC.
@@ -822,7 +817,8 @@ $(APKCERTS_FILE): $(make_apkcerts_file) $(soong_apkcerts_file_with_soong_and_mak
 	@rm -f $@
 	cat $(make_apkcerts_file) $(soong_apkcerts_file_with_soong_and_make_modules_removed) > $@
 	$(if $(filter true,$(PRODUCT_FSVERITY_GENERATE_METADATA)),\
-	  $(call _apkcerts_write_line,BuildManifest,$(FSVERITY_APK_KEY_PATH).x509.pem,$(FSVERITY_APK_KEY_PATH).pk8,,system,$@) \
+	  $(if $(filter true,$(BUILDING_SYSTEM_IMAGE)),\
+	    $(call _apkcerts_write_line,BuildManifest,$(FSVERITY_APK_KEY_PATH).x509.pem,$(FSVERITY_APK_KEY_PATH).pk8,,system,$@)) \
 	  $(if $(filter true,$(BUILDING_SYSTEM_EXT_IMAGE)),\
             $(call _apkcerts_write_line,BuildManifestSystemExt,$(FSVERITY_APK_KEY_PATH).x509.pem,$(FSVERITY_APK_KEY_PATH).pk8,,system_ext,$@)))
 	# In case value of PACKAGES is empty.
@@ -1676,8 +1672,6 @@ $(INSTALLED_VENDOR_RAMDISK_TARGET): $(INTERNAL_VENDOR_RAMDISK_TARGET)
 $(call declare-1p-container,$(INSTALLED_VENDOR_RAMDISK_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_RAMDISK_TARGET),$(INTERNAL_VENDOR_RAMDISK_TARGET),$(PRODUCT_OUT)/:/)
 
-VENDOR_NOTICE_DEPS += $(INSTALLED_VENDOR_RAMDISK_TARGET)
-
 INSTALLED_FILES_FILE_VENDOR_RAMDISK := $(PRODUCT_OUT)/installed-files-vendor-ramdisk.txt
 INSTALLED_FILES_JSON_VENDOR_RAMDISK := $(INSTALLED_FILES_FILE_VENDOR_RAMDISK:.txt=.json)
 $(INSTALLED_FILES_FILE_VENDOR_RAMDISK): .KATI_IMPLICIT_OUTPUTS := $(INSTALLED_FILES_JSON_VENDOR_RAMDISK)
@@ -1782,7 +1776,6 @@ endif
 
 $(call declare-1p-container,$(INSTALLED_VENDOR_BOOTIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_BOOTIMAGE_TARGET),$(INTERNAL_VENDOR_RAMDISK_TARGET) $(INSTALLED_DTB_IMAGE_TARGET) $(INTERNAL_VENDOR_RAMDISK_FRAGMENT_TARGETS) $(INTERNAL_VENDOR_BOOTCONDIG_TARGET),$(PRODUCT_OUT)/:/)
-VENDOR_NOTICE_DEPS += $(INSTALLED_VENDOR_BOOTIMAGE_TARGET)
 
 else # BUILDING_VENDOR_BOOT_IMAGE not defined, use prebuilt image
 
@@ -1855,7 +1848,7 @@ endif
 
 
 ifeq ($(BOARD_AVB_ENABLE),true)
-$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET): $(AVBTOOL) $(BOARD_AVB_VENDOR_KERNEL_BOOTIMAGE_KEY_PATH)
+$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET): $(AVBTOOL) $(BOARD_AVB_VENDOR_KERNEL_BOOT_KEY_PATH)
 	$(call pretty,"Target vendor_kernel_boot image: $@")
 	$(MKBOOTIMG) $(INTERNAL_VENDOR_KERNEL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --vendor_boot $@
 	$(call assert-max-image-size,$@,$(BOARD_VENDOR_KERNEL_BOOTIMAGE_PARTITION_SIZE))
@@ -1879,6 +1872,33 @@ $(call declare-container-license-deps,$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET
 else
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET),$(INTERNAL_VENDOR_KERNEL_RAMDISK_TARGET),$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET):)
 endif
+else # BUILDING_VENDOR_KERNEL_BOOT_IMAGE
+
+ifdef BOARD_PREBUILT_VENDOR_KERNEL_BOOT_IMAGE
+INTERNAL_PREBUILT_VENDOR_KERNEL_BOOTIMAGE := $(BOARD_PREBUILT_VENDOR_KERNEL_BOOT_IMAGE)
+INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/vendor_kernel_boot.img
+
+ifeq ($(BOARD_AVB_ENABLE),true)
+$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET): $(INTERNAL_PREBUILT_VENDOR_KERNEL_BOOTIMAGE) $(AVBTOOL) $(BOARD_AVB_VENDOR_KERNEL_BOOT_KEY_PATH)
+	cp $(INTERNAL_PREBUILT_VENDOR_KERNEL_BOOTIMAGE) $@
+	chmod +w $@
+	$(AVBTOOL) add_hash_footer \
+	    --image $@ \
+	    $(call get-partition-size-argument,$(BOARD_VENDOR_KERNEL_BOOTIMAGE_PARTITION_SIZE)) \
+	    --partition_name vendor_kernel_boot $(INTERNAL_AVB_VENDOR_KERNEL_BOOT_SIGNING_ARGS) \
+	    --salt $$(sha256sum $(BUILD_NUMBER_FILE) $(BUILD_DATETIME_FILE) | cut -d " " -f 1 | tr -d '\n') \
+	    $(BOARD_AVB_VENDOR_KERNEL_BOOT_ADD_HASH_FOOTER_ARGS)
+else
+$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET): $(INTERNAL_PREBUILT_VENDOR_KERNEL_BOOTIMAGE)
+	cp $(INTERNAL_PREBUILT_VENDOR_KERNEL_BOOTIMAGE) $@
+endif # BOARD_AVB_ENABLE
+
+$(call declare-1p-container,$(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET),)
+$(call declare-container-license-deps,\
+    $(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET),\
+    $(INTERNAL_PREBUILT_VENDOR_KERNEL_BOOTIMAGE),\
+    $(PRODUCT_OUT)/:/)
+endif # BOARD_PREBUILT_VENDOR_KERNEL_BOOT_IMAGE
 endif # BUILDING_VENDOR_KERNEL_BOOT_IMAGE
 
 # -----------------------------------------------------------------
@@ -1931,29 +1951,6 @@ kernel_notice_file := $(TARGET_OUT_NOTICE_FILES)/src/kernel.txt
 # reasons--not to be flashed onto any device. Targets under these directories
 # need no associated notice file on the device UI.
 exclude_target_dirs := apex
-
-# target_notice_file_xml := $(TARGET_OUT_INTERMEDIATES)/NOTICE.xml
-
-target_vendor_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE_VENDOR.txt
-target_vendor_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE_VENDOR.xml.gz
-
-target_product_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE_PRODUCT.txt
-target_product_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE_PRODUCT.xml.gz
-
-target_system_ext_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE_SYSTEM_EXT.txt
-target_system_ext_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE_SYSTEM_EXT.xml.gz
-
-target_odm_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE_ODM.txt
-target_odm_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE_ODM.xml.gz
-
-target_vendor_dlkm_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE_VENDOR_DLKM.txt
-target_vendor_dlkm_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE_VENDOR_DLKM.xml.gz
-
-target_odm_dlkm_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE_ODM_DLKM.txt
-target_odm_dlkm_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE_ODM_DLKM.xml.gz
-
-target_system_dlkm_notice_file_txt := $(TARGET_OUT_INTERMEDIATES)/NOTICE_SYSTEM_DLKM.txt
-target_system_dlkm_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE_SYSTEM_DLKM.xml.gz
 
 ifeq (,$(DISABLE_NOTICE_XML_GENERATION))
   target_notice_file_xml_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE.xml.gz
@@ -2199,6 +2196,7 @@ $(eval _var := $(call to-upper,$(1)))
 $(if $(BOARD_$(_var)IMAGE_EROFS_COMPRESSOR),$(hide) echo "$(1)_erofs_compressor=$(BOARD_$(_var)IMAGE_EROFS_COMPRESSOR)" >> $(2))
 $(if $(BOARD_$(_var)IMAGE_EROFS_COMPRESS_HINTS),$(hide) echo "$(1)_erofs_compress_hints=$(BOARD_$(_var)IMAGE_EROFS_COMPRESS_HINTS)" >> $(2))
 $(if $(BOARD_$(_var)IMAGE_EROFS_PCLUSTER_SIZE),$(hide) echo "$(1)_erofs_pcluster_size=$(BOARD_$(_var)IMAGE_EROFS_PCLUSTER_SIZE)" >> $(2))
+$(if $(BOARD_$(_var)IMAGE_EROFS_ENABLE_DEDUPE),$(hide) echo "$(1)_erofs_enable_dedupe=$(BOARD_$(_var)IMAGE_EROFS_ENABLE_DEDUPE)" >> $(2))
 $(if $(BOARD_$(_var)IMAGE_EROFS_BLOCKSIZE),$(hide) echo "$(1)_erofs_blocksize=$(BOARD_$(_var)IMAGE_EROFS_BLOCKSIZE)" >> $(2))
 $(if $(BOARD_$(_var)IMAGE_EXTFS_INODE_COUNT),$(hide) echo "$(1)_extfs_inode_count=$(BOARD_$(_var)IMAGE_EXTFS_INODE_COUNT)" >> $(2))
 $(if $(BOARD_$(_var)IMAGE_EXTFS_RSV_PCT),$(hide) echo "$(1)_extfs_rsv_pct=$(BOARD_$(_var)IMAGE_EXTFS_RSV_PCT)" >> $(2))
@@ -2209,10 +2207,6 @@ $(if $(BOARD_$(_var)IMAGE_FILE_SYSTEM_TYPE),$(hide) echo "$(1)_fs_type=$(BOARD_$
 $(if $(BOARD_$(_var)IMAGE_JOURNAL_SIZE),$(hide) echo "$(1)_journal_size=$(BOARD_$(_var)IMAGE_JOURNAL_SIZE)" >> $(2))
 $(if $(BOARD_$(_var)IMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "$(1)_reserved_size=$(BOARD_$(_var)IMAGE_PARTITION_RESERVED_SIZE)" >> $(2))
 $(if $(BOARD_$(_var)IMAGE_PARTITION_SIZE),$(hide) echo "$(1)_size=$(BOARD_$(_var)IMAGE_PARTITION_SIZE)" >> $(2))
-$(if $(BOARD_$(_var)IMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "$(1)_squashfs_block_size=$(BOARD_$(_var)IMAGE_SQUASHFS_BLOCK_SIZE)" >> $(2))
-$(if $(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "$(1)_squashfs_compressor=$(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR)" >> $(2))
-$(if $(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "$(1)_squashfs_compressor_opt=$(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(2))
-$(if $(BOARD_$(_var)IMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "$(1)_squashfs_disable_4k_align=$(BOARD_$(_var)IMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(2))
 $(if $(PRODUCT_$(_var)_BASE_FS_PATH),$(hide) echo "$(1)_base_fs_file=$(PRODUCT_$(_var)_BASE_FS_PATH)" >> $(2))
 $(if $(filter true,$(AB_OTA_UPDATER)),,\
     $(eval _size := $(BOARD_$(_var)IMAGE_PARTITION_SIZE))
@@ -2287,7 +2281,6 @@ $(if $(filter true,$(TARGET_USERIMAGES_USE_EXT2)),$(hide) echo "fs_type=ext2" >>
 
 $(if $(filter true,$(TARGET_USERIMAGES_SPARSE_EXT_DISABLED)),,$(hide) echo "extfs_sparse_flag=-s" >> $(1))
 $(if $(filter true,$(TARGET_USERIMAGES_SPARSE_EROFS_DISABLED)),,$(hide) echo "erofs_sparse_flag=-s" >> $(1))
-$(if $(filter true,$(TARGET_USERIMAGES_SPARSE_SQUASHFS_DISABLED)),,$(hide) echo "squashfs_sparse_flag=-s" >> $(1))
 $(if $(filter true,$(TARGET_USERIMAGES_SPARSE_F2FS_DISABLED)),,$(hide) echo "f2fs_sparse_flag=-S" >> $(1))
 $(if $(BOARD_EROFS_COMPRESSOR),$(hide) echo "erofs_default_compressor=$(BOARD_EROFS_COMPRESSOR)" >> $(1))
 $(if $(BOARD_EROFS_COMPRESS_HINTS),$(hide) echo "erofs_default_compress_hints=$(BOARD_EROFS_COMPRESS_HINTS)" >> $(1))
@@ -2295,8 +2288,10 @@ $(if $(BOARD_EROFS_PCLUSTER_SIZE),$(hide) echo "erofs_pcluster_size=$(BOARD_EROF
 $(if $(BOARD_EROFS_BLOCKSIZE),$(hide) echo "erofs_blocksize=$(BOARD_EROFS_BLOCKSIZE)" >> $(1))
 $(if $(BOARD_EROFS_SHARE_DUP_BLOCKS),$(hide) echo "erofs_share_dup_blocks=$(BOARD_EROFS_SHARE_DUP_BLOCKS)" >> $(1))
 $(if $(BOARD_EROFS_USE_LEGACY_COMPRESSION),$(hide) echo "erofs_use_legacy_compression=$(BOARD_EROFS_USE_LEGACY_COMPRESSION)" >> $(1))
+$(if $(BOARD_EROFS_ENABLE_DEDUPE),$(hide) echo "erofs_enable_dedupe=$(BOARD_EROFS_ENABLE_DEDUPE)" >> $(1))
 $(if $(BOARD_EXT4_SHARE_DUP_BLOCKS),$(hide) echo "ext4_share_dup_blocks=$(BOARD_EXT4_SHARE_DUP_BLOCKS)" >> $(1))
 $(if $(BOARD_F2FS_BLOCKSIZE),$(hide) echo "f2fs_blocksize=$(BOARD_F2FS_BLOCKSIZE)" >> $(1))
+$(if $(BOARD_F2FS_PACKED_SSA),$(hide) echo "f2fs_packed_ssa=$(BOARD_F2FS_PACKED_SSA)" >> $(1))
 $(if $(BOARD_FLASH_LOGICAL_BLOCK_SIZE), $(hide) echo "flash_logical_block_size=$(BOARD_FLASH_LOGICAL_BLOCK_SIZE)" >> $(1))
 $(if $(BOARD_FLASH_ERASE_BLOCK_SIZE), $(hide) echo "flash_erase_block_size=$(BOARD_FLASH_ERASE_BLOCK_SIZE)" >> $(1))
 $(if $(filter eng, $(TARGET_BUILD_VARIANT)),$(hide) echo "verity_disable=true" >> $(1))
@@ -2679,7 +2674,8 @@ $(INSTALLED_RECOVERY_BUILD_PROP_TARGET): PRIVATE_RECOVERY_UI_PROPERTIES := \
     TARGET_RECOVERY_UI_BRIGHTNESS_FILE:brightness_file \
     TARGET_RECOVERY_UI_MAX_BRIGHTNESS_FILE:max_brightness_file \
     TARGET_RECOVERY_UI_BRIGHTNESS_NORMAL:brightness_normal_percent \
-    TARGET_RECOVERY_UI_BRIGHTNESS_DIMMED:brightness_dimmed_percent
+    TARGET_RECOVERY_UI_BRIGHTNESS_DIMMED:brightness_dimmed_percent \
+    TARGET_RECOVERY_UI_GRAPHICS_TIMEOUT_MS:graphics_timeout_ms
 
 # Parses the given list of build variables and writes their values as build properties if defined.
 # For example, if a target defines `TARGET_RECOVERY_UI_MARGIN_HEIGHT := 100`,
@@ -3104,8 +3100,6 @@ $(INSTALLED_VENDOR_DEBUG_RAMDISK_TARGET): $(INTERNAL_VENDOR_DEBUG_RAMDISK_TARGET
 $(call declare-1p-container,$(INSTALLED_VENDOR_DEBUG_RAMDISK_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_DEBUG_RAMDISK_TARGET),$(INTERNAL_VENDOR_DEBUG_RAMDISK_TARGET),$(PRODUCT_OUT)/:/)
 
-VENDOR_NOTICE_DEPS += $(INSTALLED_VENDOR_DEBUG_RAMDISK_TARGET)
-
 # -----------------------------------------------------------------
 # vendor_boot-debug.img.
 INSTALLED_VENDOR_DEBUG_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/vendor_boot-debug.img
@@ -3147,8 +3141,6 @@ endif
 $(call declare-1p-container,$(INSTALLED_VENDOR_DEBUG_BOOTIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_DEBUG_BOOTIMAGE_TARGET),$(INTERNAL_VENDOR_DEBUG_RAMDISK_TARGET),$(PRODUCT_OUT)/:/)
 
-VENDOR_NOTICE_DEPS += $(INSTALLED_VENDOR_DEBUG_BOOTIMAGE_TARGET)
-
 endif # BUILDING_DEBUG_VENDOR_BOOT_IMAGE
 
 INTERNAL_DEBUG_RAMDISK_ADB_DEBUG_PROP_TARGET := $(strip $(filter $(TARGET_DEBUG_RAMDISK_OUT)/adb_debug.prop,$(INTERNAL_DEBUG_RAMDISK_FILES)))
@@ -3160,6 +3152,137 @@ INSTALLED_FILES_OUTSIDE_IMAGES := $(filter-out $(TARGET_TEST_HARNESS_RAMDISK_OUT
 INTERNAL_TEST_HARNESS_RAMDISK_FILES := $(filter $(TARGET_TEST_HARNESS_RAMDISK_OUT)/%, \
     $(INTERNAL_TEST_HARNESS_RAMDISK_ADB_DEBUG_PROP_TARGET) \
     $(ALL_DEFAULT_INSTALLED_MODULES))
+
+# -----------------------------------------------------------------
+# vendor_boot_recovery_media.img and recovery_media.img (installer bundle)
+ifeq ($(BOARD_USES_RECOVERY_MEDIA),true)
+
+# Real path to the custom recovery media binary and rc script
+CUSTOM_RECOVERY_MEDIA_BINARY := $(call intermediates-dir-for,EXECUTABLES,recovery_media)/recovery_media
+CUSTOM_RECOVERY_MEDIA_RC := $(call intermediates-dir-for,ETC,recovery_media_init_rc_config)/recovery_media_init_rc_config
+INTERNAL_VENDOR_RAMDISK_RECOVERY_MEDIA_TARGET := $(call intermediates-dir-for,PACKAGING,vendor_boot_recovery_media)/vendor_ramdisk.cpio$(RAMDISK_EXT)
+INSTALLED_VENDOR_BOOT_RECOVERY_MEDIA_TARGET := $(PRODUCT_OUT)/vendor_boot_recovery_media.img
+
+# Find the original recovery fragment to use as a base
+INTERNAL_VENDOR_RAMDISK_RECOVERY_BASE := $(filter %recovery.cpio$(RAMDISK_EXT),$(INTERNAL_VENDOR_RAMDISK_FRAGMENT_TARGETS))
+
+MEDIA_INSTALLER_DEPS := \
+    $(TARGET_OUT_VENDOR_EXECUTABLES)/cgpt \
+    $(TARGET_OUT_VENDOR_EXECUTABLES)/partition-common.sh \
+    $(TARGET_OUT_VENDOR_EXECUTABLES)/partition-script.sh \
+    $(TARGET_OUT_VENDOR_EXECUTABLES)/partition-common-cgpt.sh \
+
+$(INTERNAL_VENDOR_RAMDISK_RECOVERY_MEDIA_TARGET): PRIVATE_STAGING_DIR := $(call intermediates-dir-for,PACKAGING,vendor_boot_recovery_media_ramdisk)
+$(INTERNAL_VENDOR_RAMDISK_RECOVERY_MEDIA_TARGET): $(MKBOOTFS) $(CUSTOM_RECOVERY_MEDIA_BINARY) $(CUSTOM_RECOVERY_MEDIA_RC) $(INTERNAL_VENDOR_RAMDISK_RECOVERY_BASE) $(INTERNAL_VENDOR_RAMDISK_TARGET) $(INTERNAL_VENDOR_RAMDISK_FRAGMENT_TARGETS) $(MEDIA_INSTALLER_DEPS) | $(COMPRESSION_COMMAND_DEPS)
+	@echo "Target vendor ramdisk fragment (all merged for media): $@"
+	$(hide) rm -rf $(PRIVATE_STAGING_DIR) && mkdir -p $(PRIVATE_STAGING_DIR)
+	$(hide) if [ -n "$(INTERNAL_VENDOR_RAMDISK_TARGET)" ]; then \
+	    $(LZ4) -d -c $(INTERNAL_VENDOR_RAMDISK_TARGET) | (cd $(PRIVATE_STAGING_DIR) && cpio -i -u); \
+	fi
+	$(hide) if [ -n "$(INTERNAL_VENDOR_RAMDISK_RECOVERY_BASE)" ]; then \
+	    $(LZ4) -d -c $(INTERNAL_VENDOR_RAMDISK_RECOVERY_BASE) | (cd $(PRIVATE_STAGING_DIR) && cpio -i -u); \
+	fi
+	# Purge large unnecessary files from the merged ramdisk to fit in 32MB
+	$(hide) rm -f $(PRIVATE_STAGING_DIR)/system/bin/adbd
+	$(hide) rm -f $(PRIVATE_STAGING_DIR)/system/bin/fastbootd
+	$(hide) rm -f $(PRIVATE_STAGING_DIR)/system/bin/strace
+	$(hide) rm -rf $(PRIVATE_STAGING_DIR)/res/images
+
+	$(hide) mkdir -p $(PRIVATE_STAGING_DIR)/system/bin $(PRIVATE_STAGING_DIR)/vendor/bin $(PRIVATE_STAGING_DIR)/system/lib64 $(PRIVATE_STAGING_DIR)/vendor/etc/init
+	$(hide) cp -f $(CUSTOM_RECOVERY_MEDIA_BINARY) $(PRIVATE_STAGING_DIR)/system/bin/recovery
+	$(hide) cp -f $(CUSTOM_RECOVERY_MEDIA_BINARY) $(PRIVATE_STAGING_DIR)/vendor/bin/recovery_media
+	$(hide) cp -f $(CUSTOM_RECOVERY_MEDIA_RC) $(PRIVATE_STAGING_DIR)/vendor/etc/init/recovery_media.rc
+
+	$(hide) cp -f $(MEDIA_INSTALLER_DEPS) $(PRIVATE_STAGING_DIR)/system/bin/
+
+	$(hide) if [ -d $(PRIVATE_STAGING_DIR)/first_stage_ramdisk ]; then \
+	    mkdir -p $(PRIVATE_STAGING_DIR)/first_stage_ramdisk/system/bin $(PRIVATE_STAGING_DIR)/first_stage_ramdisk/vendor/bin; \
+	    cp -f $(CUSTOM_RECOVERY_MEDIA_BINARY) $(PRIVATE_STAGING_DIR)/first_stage_ramdisk/system/bin/recovery; \
+	    cp -f $(CUSTOM_RECOVERY_MEDIA_BINARY) $(PRIVATE_STAGING_DIR)/first_stage_ramdisk/vendor/bin/recovery_media; \
+	fi
+	$(hide) $(MKBOOTFS) $(PRIVATE_STAGING_DIR) | $(COMPRESSION_COMMAND) > $@
+
+$(INSTALLED_VENDOR_BOOT_RECOVERY_MEDIA_TARGET): PRIVATE_BOOTCONFIG := androidboot.init_rc=/vendor/etc/init/recovery_media.rc
+$(INSTALLED_VENDOR_BOOT_RECOVERY_MEDIA_TARGET): $(MKBOOTIMG) $(INTERNAL_VENDOR_RAMDISK_RECOVERY_MEDIA_TARGET) $(AVBTOOL) $(INTERNAL_VENDOR_BOOTCONFIG_TARGET) $(INTERNAL_VENDOR_RAMDISK_FRAGMENT_TARGETS) $(INTERNAL_VENDOR_RAMDISK_TARGET)
+	@echo "Target Recovery Media Image: $@"
+	$(hide) rm -f $(dir $@)vendor-bootconfig-recovery-media.img
+	$(hide) if [ -f "$(INTERNAL_VENDOR_BOOTCONFIG_TARGET)" ]; then \
+	    sed -e 's/androidboot.force_normal_boot *= *"1"/androidboot.force_normal_boot = "0"/' \
+	        -e 's/androidboot.force_normal_boot=1/androidboot.force_normal_boot=0/' \
+	        $(INTERNAL_VENDOR_BOOTCONFIG_TARGET) > $(dir $@)vendor-bootconfig-recovery-media.img; \
+	else \
+	    echo "androidboot.force_normal_boot=0" > $(dir $@)vendor-bootconfig-recovery-media.img; \
+	fi
+	$(hide) if ! grep -q "androidboot.force_normal_boot" $(dir $@)vendor-bootconfig-recovery-media.img; then \
+	    echo "androidboot.force_normal_boot=0" >> $(dir $@)vendor-bootconfig-recovery-media.img; \
+	fi
+	$(hide) echo "$(PRIVATE_BOOTCONFIG)" >> $(dir $@)vendor-bootconfig-recovery-media.img
+	$(hide) $(MKBOOTIMG) \
+		$(filter-out --vendor_bootconfig $(INTERNAL_VENDOR_BOOTCONFIG_TARGET),$(INTERNAL_VENDOR_BOOTIMAGE_ARGS)) \
+		$(BOARD_MKBOOTIMG_ARGS) \
+		--vendor_ramdisk $(INTERNAL_VENDOR_RAMDISK_RECOVERY_MEDIA_TARGET) \
+		--vendor_bootconfig $(dir $@)vendor-bootconfig-recovery-media.img \
+		--vendor_boot $@
+ifeq ($(BOARD_AVB_ENABLE),true)
+	$(call assert-max-image-size,$@,$(call get-hash-image-max-size,$(BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE)))
+	$(hide) $(AVBTOOL) add_hash_footer \
+	    --image $@ \
+	    $(call get-partition-size-argument,$(BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE)) \
+	    --salt $$(sha256sum $(BUILD_NUMBER_FILE) $(BUILD_DATETIME_FILE) | cut -d " " -f 1 | tr -d '\n') \
+	    --partition_name vendor_boot $(INTERNAL_AVB_VENDOR_BOOT_SIGNING_ARGS) \
+	    $(BOARD_AVB_VENDOR_BOOT_ADD_HASH_FOOTER_ARGS)
+else
+	$(call assert-max-image-size,$@,$(BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE))
+endif
+
+# recovery_media.img bundle (installer kernel image)
+INSTALLED_RECOVERY_MEDIA_TARGET := $(PRODUCT_OUT)/recovery_media.img
+$(INSTALLED_RECOVERY_MEDIA_TARGET): PRIVATE_STAGING_DIR := $(call intermediates-dir-for,PACKAGING,recovery_media_bundle)
+$(INSTALLED_RECOVERY_MEDIA_TARGET): $(MKEROFS) $(AVBTOOL) $(INSTALLED_BOOTIMAGE_TARGET) $(INSTALLED_INIT_BOOT_IMAGE_TARGET) $(INSTALLED_PVMFWIMAGE_TARGET) $(INSTALLED_VENDOR_BOOT_RECOVERY_MEDIA_TARGET) $(INSTALLED_DTBOIMAGE_TARGET)
+	@echo "Target Recovery Media EROFS Image: $@"
+	$(hide) rm -rf $(PRIVATE_STAGING_DIR) && mkdir -p $(PRIVATE_STAGING_DIR)
+	$(hide) cp $(INSTALLED_BOOTIMAGE_TARGET) $(PRIVATE_STAGING_DIR)/boot.img
+	$(hide) cp $(INSTALLED_INIT_BOOT_IMAGE_TARGET) $(PRIVATE_STAGING_DIR)/init_boot.img
+	$(hide) cp $(INSTALLED_VENDOR_BOOT_RECOVERY_MEDIA_TARGET) $(PRIVATE_STAGING_DIR)/vendor_boot.img
+	$(hide) if [ -f "$(INSTALLED_PVMFWIMAGE_TARGET)" ]; then \
+	    cp $(INSTALLED_PVMFWIMAGE_TARGET) $(PRIVATE_STAGING_DIR)/pvmfw.img; \
+	    PVMFW_ARG="--include_descriptors_from_image $(INSTALLED_PVMFWIMAGE_TARGET)"; \
+	else \
+	    truncate -s 1M $(PRIVATE_STAGING_DIR)/pvmfw.img; \
+	    PVMFW_ARG=""; \
+	fi; \
+	if [ -f "$(INSTALLED_DTBOIMAGE_TARGET)" ]; then \
+	    cp $(INSTALLED_DTBOIMAGE_TARGET) $(PRIVATE_STAGING_DIR)/dtbo.img; \
+	    DTBO_ARG="--include_descriptors_from_image $(INSTALLED_DTBOIMAGE_TARGET)"; \
+	else \
+	    DTBO_ARG=""; \
+	fi; \
+	$(AVBTOOL) make_vbmeta_image \
+	    --rollback_index $(if $(BOARD_AVB_ROLLBACK_INDEX),$(BOARD_AVB_ROLLBACK_INDEX),0) \
+	    --output $(PRIVATE_STAGING_DIR)/vbmeta \
+	    --algorithm $(if $(BOARD_AVB_RECOVERY_MEDIA_ALGORITHM),$(BOARD_AVB_RECOVERY_MEDIA_ALGORITHM),$(BOARD_AVB_ALGORITHM)) \
+	    --key $(if $(BOARD_AVB_RECOVERY_MEDIA_KEY_PATH),$(BOARD_AVB_RECOVERY_MEDIA_KEY_PATH),$(BOARD_AVB_KEY_PATH)) \
+	    --include_descriptors_from_image $(INSTALLED_BOOTIMAGE_TARGET) \
+	    --include_descriptors_from_image $(INSTALLED_INIT_BOOT_IMAGE_TARGET) \
+	    --include_descriptors_from_image $(INSTALLED_VENDOR_BOOT_RECOVERY_MEDIA_TARGET) \
+	    $$DTBO_ARG \
+	    $$PVMFW_ARG
+	$(hide) $(MKEROFS) -z lz4hc,9 $@ $(PRIVATE_STAGING_DIR)
+	$(hide) rm -rf $(PRIVATE_STAGING_DIR)
+
+# Provide recovery_media.img as recovery-kernel for the packing script
+$(PRODUCT_OUT)/recovery-kernel: $(INSTALLED_RECOVERY_MEDIA_TARGET)
+	$(hide) cp -f $< $@
+
+.PHONY: recovery-media-image
+recovery-media-image: $(INSTALLED_RECOVERY_MEDIA_TARGET) $(PRODUCT_OUT)/recovery-kernel
+
+$(call dist-for-goals,dist_files,$(INSTALLED_RECOVERY_MEDIA_TARGET))
+
+# Ensure the packing script depends on our dynamic recovery image
+$(PACK_RECOVERY_IMAGE_TARGET): $(INSTALLED_RECOVERY_MEDIA_TARGET)
+
+endif # BOARD_USES_RECOVERY_MEDIA
 
 # The order is important here. The test harness ramdisk staging directory has to
 # come last so that it can override the adb_debug.prop in the debug ramdisk
@@ -3269,8 +3392,6 @@ $(INSTALLED_VENDOR_TEST_HARNESS_RAMDISK_TARGET): $(INTERNAL_VENDOR_TEST_HARNESS_
 $(call declare-1p-container,$(INSTALLED_VENDOR_TEST_HARNESS_RAMDISK_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_TEST_HARNESS_RAMDISK_TARGET),$(INTERNAL_VENDOR_TEST_HARNESS_RAMDISK_TARGET),$(PRODUCT_OUT)/:/)
 
-VENDOR_NOTICE_DEPS += $(INSTALLED_VENDOR_TEST_HARNESS_RAMDISK_TARGET)
-
 # -----------------------------------------------------------------
 # vendor_boot-test-harness.img.
 INSTALLED_VENDOR_TEST_HARNESS_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/vendor_boot-test-harness.img
@@ -3290,8 +3411,6 @@ $(INSTALLED_VENDOR_TEST_HARNESS_BOOTIMAGE_TARGET): $(INTERNAL_VENDOR_RAMDISK_FRA
 
 $(call declare-1p-container,$(INSTALLED_VENDOR_TEST_HARNESS_BOOTIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_TEST_HARNESS_BOOTIMAGE_TARGET),$(INTERNAL_VENDOR_TEST_HARNESS_RAMDISK_TARGET),$(PRODUCT_OUT)/:/)
-
-VENDOR_NOTICE_DEPS += $(INSTALLED_VENDOR_TEST_HARNESS_BOOTIMAGE_TARGET)
 
 endif # BUILDING_DEBUG_VENDOR_BOOT_IMAGE
 
@@ -4140,8 +4259,6 @@ $(INSTALLED_VENDORIMAGE_TARGET): \
     $(vendorimage_intermediates)/file_list.txt
 	$(build-vendorimage-target)
 
-VENDOR_NOTICE_DEPS += $(INSTALLED_VENDORIMAGE_TARGET)
-
 $(call declare-container-license-metadata,$(INSTALLED_VENDORIMAGE_TARGET),legacy_proprietary,proprietary,,"Vendor Image",vendor)
 $(call declare-container-license-deps,$(INSTALLED_VENDORIMAGE_TARGET),$(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_VENDORIMAGE_FILES) $(RECOVERY_FROM_BOOT_PATH),$(PRODUCT_OUT)/:/)
 
@@ -4227,8 +4344,6 @@ $(INSTALLED_PRODUCTIMAGE_TARGET): \
     $(productimage_intermediates)/file_list.txt
 	$(build-productimage-target)
 
-PRODUCT_NOTICE_DEPS += $(INSTALLED_PRODUCTIMAGE_TARGET)
-
 $(call declare-1p-container,$(INSTALLED_PRODUCTIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_PRODUCTIMAGE_TARGET),$(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_PRODUCTIMAGE_FILES) $(INSTALLED_FILES_FILE_PRODUCT),$(PRODUCT_OUT)/:/)
 
@@ -4296,8 +4411,6 @@ $(INSTALLED_SYSTEM_EXTIMAGE_TARGET): \
     $(INSTALLED_FILES_FILE_SYSTEM_EXT) \
     $(system_extimage_intermediates)/file_list.txt
 	$(build-system_extimage-target)
-
-SYSTEM_EXT_NOTICE_DEPS += $(INSTALLED_SYSTEM_EXTIMAGE_TARGET)
 
 $(call declare-1p-container,$(INSTALLED_SYSTEM_EXTIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_SYSTEM_EXTIMAGE_TARGET),$(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_SYSTEM_EXTIMAGE_FILES) $(INSTALLED_FILES_FILE_SYSTEM_EXT),$(PRODUCT_OUT)/:/)
@@ -4386,8 +4499,6 @@ $(INSTALLED_ODMIMAGE_TARGET): \
     $(odmimage_intermediates)/file_list.txt
 	$(build-odmimage-target)
 
-ODM_NOTICE_DEPS += $(INSTALLED_ODMIMAGE_TARGET)
-
 $(call declare-1p-container,$(INSTALLED_ODMIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_ODMIMAGE_TARGET),$(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_ODMIMAGE_FILES) $(INSTALLED_FILES_FILE_ODM),$(PRODUCT_OUT)/:/)
 
@@ -4455,8 +4566,6 @@ $(INSTALLED_VENDOR_DLKMIMAGE_TARGET): \
     $(vendor_dlkmimage_intermediates)/file_list.txt
 	$(build-vendor_dlkmimage-target)
 
-VENDOR_DLKM_NOTICE_DEPS += $(INSTALLED_VENDOR_DLKMIMAGE_TARGET)
-
 $(call declare-1p-container,$(INSTALLED_VENDOR_DLKMIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_VENDOR_DLKMIMAGE_TARGET),$(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_VENDOR_DLKMIMAGE_FILES) $(INSTALLED_FILES_FILE_VENDOR_DLKM),$(PRODUCT_OUT)/:/)
 
@@ -4523,8 +4632,6 @@ $(INSTALLED_ODM_DLKMIMAGE_TARGET): \
     $(INSTALLED_FILES_FILE_ODM_DLKM) \
     $(odm_dlkmimage_intermediates)/file_list.txt
 	$(build-odm_dlkmimage-target)
-
-ODM_DLKM_NOTICE_DEPS += $(INSTALLED_ODM_DLKMIMAGE_TARGET)
 
 $(call declare-1p-container,$(INSTALLED_ODM_DLKMIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_ODM_DLKMIMAGE_TARGET),$(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_ODM_DLKMIMAGE_FILES) $(INSTALLED_FILES_FILE_ODM_DLKM),$(PRODUCT_OUT)/:/)
@@ -4595,8 +4702,6 @@ $(INSTALLED_SYSTEM_DLKMIMAGE_TARGET): \
     $(system_dlkmimage_intermediates)/file_list.txt
 	$(build-system_dlkmimage-target)
 
-SYSTEM_DLKM_NOTICE_DEPS += $(INSTALLED_SYSTEM_DLKMIMAGE_TARGET)
-
 $(call declare-1p-container,$(INSTALLED_SYSTEM_DLKMIMAGE_TARGET),)
 $(call declare-container-license-deps,$(INSTALLED_SYSTEM_DLKMIMAGE_TARGET),$(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_SYSTEM_DLKMIMAGE_FILES) $(INSTALLED_FILES_FILE_SYSTEM_DLKM),$(PRODUCT_OUT)/:/)
 
@@ -4618,7 +4723,6 @@ ifeq ($(BOARD_USES_PVMFWIMAGE),true)
 .PHONY: pvmfwimage
 pvmfwimage: $(INSTALLED_PVMFWIMAGE_TARGET)
 
-INSTALLED_PVMFWIMAGE_TARGET := $(PRODUCT_OUT)/pvmfw.img
 INSTALLED_PVMFW_EMBEDDED_AVBKEY_TARGET := $(PRODUCT_OUT)/pvmfw_embedded.avbpubkey
 INSTALLED_PVMFW_BINARY_TARGET := $(call module-target-built-files,pvmfw_bin)
 INTERNAL_PVMFWIMAGE_FILES := $(call module-target-built-files,pvmfw_img)
@@ -4815,7 +4919,7 @@ BOARD_AVB_SYSTEM_DLKM_ADD_HASHTREE_FOOTER_ARGS += \
 
 # Appends fingerprint and security patch level as a AVB property descriptor.
 BOARD_AVB_SYSTEM_ADD_HASHTREE_FOOTER_ARGS += \
-    --prop com.android.build.system.fingerprint:$(BUILD_FINGERPRINT_FROM_FILE) \
+    --prop com.android.build.system.fingerprint:$(BUILD_SYSTEM_FINGERPRINT_FROM_FILE) \
     --prop com.android.build.system.security_patch:$(PLATFORM_SECURITY_PATCH)
 
 BOARD_AVB_PRODUCT_ADD_HASHTREE_FOOTER_ARGS += \
@@ -5636,10 +5740,8 @@ endif # ENABLE_UFFD_GC == "default"
 
 # -- Check VINTF compatibility of build.
 # Skip partial builds; only check full builds. Only check if:
-# - PRODUCT_ENFORCE_VINTF_MANIFEST is true
 # - system / vendor VINTF metadata exists
 # - Building product / system_ext / odm images if board has product / system_ext / odm images
-ifeq ($(PRODUCT_ENFORCE_VINTF_MANIFEST),true)
 ifeq ($(check_vintf_has_system),true)
 ifeq ($(check_vintf_has_vendor),true)
 ifeq ($(filter true,$(BUILDING_ODM_IMAGE)),$(filter true,$(BOARD_USES_ODMIMAGE)))
@@ -5711,7 +5813,6 @@ endif # BUILDING_PRODUCT_IMAGE equals BOARD_USES_PRODUCTIMAGE
 endif # BUILDING_ODM_IMAGE equals BOARD_USES_ODMIMAGE
 endif # check_vintf_has_vendor
 endif # check_vintf_has_system
-endif # PRODUCT_ENFORCE_VINTF_MANIFEST
 
 # Add all logs of VINTF checks to dist builds
 droid_targets: $(check_vintf_all_deps)
@@ -5882,7 +5983,6 @@ INTERNAL_OTATOOLS_MODULES := \
   mkfs.erofs \
   mkf2fsuserimg \
   mksquashfs \
-  mksquashfsimage \
   mkuserimg_mke2fs \
   ota_extractor \
   ota_from_target_files \
@@ -6229,9 +6329,7 @@ endif # BOARD_AVB_ENABLE
 endif # BOARD_USES_PVMFWIMAGE
 	$(call dump-dynamic-partitions-info,$@)
 	@# VINTF checks
-ifeq ($(PRODUCT_ENFORCE_VINTF_MANIFEST),true)
 	$(hide) echo "vintf_enforce=true" >> $@
-endif
 ifdef ODM_MANIFEST_SKUS
 	$(hide) echo "vintf_odm_manifest_skus=$(ODM_MANIFEST_SKUS)" >> $@
 endif
@@ -6522,6 +6620,8 @@ endif
 
 ifdef BUILDING_VENDOR_KERNEL_BOOT_IMAGE
   $(BUILT_TARGET_FILES_DIR): $(INTERNAL_VENDOR_KERNEL_RAMDISK_FILES)
+else ifdef BOARD_PREBUILT_VENDOR_KERNEL_BOOT_IMAGE
+  $(BUILT_TARGET_FILES_DIR): $(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET)
 endif
 
 ifdef BUILDING_RECOVERY_IMAGE
@@ -6648,6 +6748,7 @@ $(BUILT_TARGET_FILES_DIR): \
 	    $(INSTALLED_DTBIMAGE_TARGET) \
 	    $(INSTALLED_2NDBOOTLOADER_TARGET) \
 	    $(INSTALLED_VENDOR_KERNEL_RAMDISK_TARGET) \
+	    $(INSTALLED_INIT_BOOT_IMAGE_TARGET) \
 	    $(BUILT_RAMDISK_16K_TARGET) \
 	    $(BUILT_KERNEL_16K_TARGET) \
 	    $(BUILT_BOOTIMAGE_16K_TARGET) \
@@ -6963,6 +7064,10 @@ ifdef BOARD_PREBUILT_VENDOR_BOOTIMAGE
 	$(hide) mkdir -p $(zip_root)/IMAGES
 	$(hide) cp $(INSTALLED_VENDOR_BOOTIMAGE_TARGET) $(zip_root)/IMAGES/
 endif
+ifdef BOARD_PREBUILT_VENDOR_KERNEL_BOOT_IMAGE
+	$(hide) mkdir -p $(zip_root)/IMAGES
+	$(hide) cp $(INSTALLED_VENDOR_KERNEL_BOOTIMAGE_TARGET) $(zip_root)/IMAGES/
+endif
 ifdef BOARD_PREBUILT_VENDORIMAGE
 	$(hide) mkdir -p $(zip_root)/IMAGES
 	$(hide) cp $(INSTALLED_VENDORIMAGE_TARGET) $(zip_root)/IMAGES/
@@ -7174,6 +7279,9 @@ $(BUILT_TARGET_FILES_PACKAGE): $(BUILT_TARGET_FILES_DIR)
 .PHONY: target-files-package
 target-files-package: $(BUILT_TARGET_FILES_PACKAGE)
 
+.PHONY: target-files-package-soong-diff-test
+target-files-package-soong-diff-test: target-files-package
+
 .PHONY: target-files-dir
 target-files-dir: $(BUILT_TARGET_FILES_DIR)
 
@@ -7226,7 +7334,7 @@ $(NDK_SYSROOT_TARGET): $(SOONG_OUT_DIR)/ndk.timestamp
 	$(hide) tar cjf $@ -C $(SOONG_OUT_DIR) ndk
 
 ifeq ($(HOST_OS),linux)
-$(call dist-for-goals,sdk ndk_sysroot,$(NDK_SYSROOT_TARGET))
+$(call dist-for-goals,ndk_sysroot,$(NDK_SYSROOT_TARGET))
 endif
 
 ifeq ($(build_ota_package),true)
@@ -7366,8 +7474,15 @@ SYMBOLS_MAPPING := $(PRODUCT_OUT)/$(name)-symbols-mapping.textproto
 
 _symbols_zip_modules := $(call product-installed-modules,$(INTERNAL_PRODUCT))
 
+ifeq ($(BOARD_USES_PVMFWIMAGE),true)
+_symbols_zip_modules += pvmfw_bin
+endif # BOARD_USES_PVMFWIMAGE
+
 _symbols_zip_modules_symbols_files := $(foreach m,$(_symbols_zip_modules),$(ALL_MODULES.$(m).SYMBOLIC_OUTPUT_PATH))
 _symbols_zip_modules_mapping_files := $(foreach m,$(_symbols_zip_modules),$(ALL_MODULES.$(m).ELF_SYMBOL_MAPPING_PATH))
+
+.PHONY: symbols-zip
+symbols-zip: $(SYMBOLS_ZIP) $(SYMBOLS_MAPPING)
 
 .PHONY: symbols-files
 symbols-files: $(_symbols_zip_modules_symbols_files)
@@ -7606,6 +7721,7 @@ $(INTERNAL_SUPERIMAGE_DIST_TARGET): $(LPMAKE) $(BUILT_TARGET_FILES_DIR) $(BUILD_
 # Skip packing it in dist package because it is in update package.
 ifneq (true,$(BOARD_SUPER_IMAGE_IN_UPDATE_PACKAGE))
 $(call dist-for-goals,dist_files,$(INTERNAL_SUPERIMAGE_DIST_TARGET))
+$(call dist-for-goals,target-files-package-soong-diff-test,$(INTERNAL_SUPERIMAGE_DIST_TARGET))
 endif
 
 .PHONY: superimage_dist
@@ -7908,23 +8024,12 @@ ATREE_FILES := \
 	$(ALL_SDK_FILES)
 endif
 
-atree_dir := development/build
-
-
-sdk_atree_files := $(atree_dir)/sdk.exclude.atree
-
-# development/build/sdk-android-<abi>.atree is used to differentiate
-# between architecture models (e.g. ARMv5TE versus ARMv7) when copying
-# files like the kernel image. We use TARGET_CPU_ABI because we don't
-# have a better way to distinguish between CPU models.
-ifneq (,$(strip $(wildcard $(atree_dir)/sdk-android-$(TARGET_CPU_ABI).atree)))
-  sdk_atree_files += $(atree_dir)/sdk-android-$(TARGET_CPU_ABI).atree
-endif
+sdk_atree_files := development/build/sdk.exclude.atree
 
 ifneq ($(PRODUCT_SDK_ATREE_FILES),)
 sdk_atree_files += $(PRODUCT_SDK_ATREE_FILES)
 else
-sdk_atree_files += $(atree_dir)/sdk.atree
+sdk_atree_files += development/build/sdk.atree
 endif
 
 SDK_METADATA_DIR :=$= $(call intermediates-dir-for,PACKAGING,framework-doc-stubs-metadata,,COMMON)
@@ -7946,26 +8051,35 @@ $(SDK_METADATA): $(TARGET_OUT_COMMON_INTERMEDIATES)/PACKAGING/framework-doc-stub
 framework-doc-stubs: $(SDK_METADATA)
 
 deps := \
-	$(OUT_DOCS)/offline-sdk-docs-docs.zip \
+	$(OUT_DOCS)/offline-sdk-timestamp \
 	$(SDK_METADATA_FILES) \
   $(INSTALLED_SDK_BUILD_PROP_TARGET) \
 	$(ATREE_FILES) \
 	$(sdk_atree_files) \
 	$(HOST_OUT_EXECUTABLES)/atree
 
-# The name of the subdir within the platforms dir of the sdk. One of:
-# - android-<SDK_INT> (stable base dessert SDKs)
-# - android-<CODENAME> (stable extension SDKs)
-# - android-<SDK_INT>-ext<EXT_INT> (codename SDKs)
-sdk_platform_dir_name := $(strip \
-  $(if $(filter REL,$(PLATFORM_VERSION_CODENAME)), \
-    $(if $(filter $(PLATFORM_SDK_EXTENSION_VERSION),$(PLATFORM_BASE_SDK_EXTENSION_VERSION)), \
-      android-$(PLATFORM_SDK_VERSION_FULL), \
-      android-$(PLATFORM_SDK_VERSION_FULL)-ext$(PLATFORM_SDK_EXTENSION_VERSION) \
-    ), \
-    android-$(PLATFORM_VERSION_CODENAME) \
-  ) \
-)
+# The name of the subdir within the platforms dir of the sdk.
+#   if canary build          : android-canary-$PREVIEW_SDK_INT         (android-canary-20250617)
+#   if beta build            : android-$UPCOMING_SDK_INT_FULL-ext$BETA (android-36.1-beta2)
+#   if REL                   : android-$SDK_INT_FULL                   (android-36.1)
+#   if REL with newer SDK ext: android-$SDK_INT_FULL-ext$SDK_EXT       (android-36.1-ext22)
+#   else (internal DEV)      : android-$CODENAME                       (android-CinnamonBun)
+ifeq ($(PLATFORM_VERSION_CODENAME),CANARY)
+sdk_platform_dir_name := android-canary-$(PLATFORM_PREVIEW_SDK_VERSION)
+else ifeq (,$(filter $(PLATFORM_PREVIEW_SDK_VERSION),0 1))
+major := $(shell echo "$(PLATFORM_PREVIEW_SDK_VERSION)" | cut -c 1-2)
+minor := $(shell echo "$(PLATFORM_PREVIEW_SDK_VERSION)" | cut -c 3)
+beta := $(shell echo "$(PLATFORM_PREVIEW_SDK_VERSION)" | cut -c 4)
+sdk_platform_dir_name := android-$(major).$(minor)-beta$(beta)
+else ifeq ($(PLATFORM_VERSION_CODENAME),REL)
+  ifeq ($(PLATFORM_SDK_EXTENSION_VERSION),$(PLATFORM_BASE_SDK_EXTENSION_VERSION))
+    sdk_platform_dir_name := android-$(PLATFORM_SDK_VERSION_FULL)
+  else
+    sdk_platform_dir_name := android-$(PLATFORM_SDK_VERSION_FULL)-ext$(PLATFORM_SDK_EXTENSION_VERSION)
+  endif
+else
+sdk_platform_dir_name := android-$(PLATFORM_VERSION_CODENAME)
+endif
 
 INTERNAL_SDK_TARGET := $(sdk_dir)/$(sdk_name).zip
 $(INTERNAL_SDK_TARGET): PRIVATE_NAME := $(sdk_name)
@@ -7973,21 +8087,10 @@ $(INTERNAL_SDK_TARGET): PRIVATE_DIR := $(sdk_dir)/$(sdk_name)
 $(INTERNAL_SDK_TARGET): PRIVATE_DEP_FILE := $(sdk_dep_file)
 $(INTERNAL_SDK_TARGET): PRIVATE_INPUT_FILES := $(sdk_atree_files)
 $(INTERNAL_SDK_TARGET): PRIVATE_PLATFORM_NAME := $(sdk_platform_dir_name)
-# Set SDK_GNU_ERROR to non-empty to fail when a GNU target is built.
-#
-#SDK_GNU_ERROR := true
 
-$(INTERNAL_SDK_TARGET): $(deps) | $(BUILD_NUMBER_FILE)
+$(INTERNAL_SDK_TARGET): $(deps) | $(BUILD_NUMBER_FILE) $(BUILD_UUID_FILE)
 	@echo "Package SDK: $@"
 	$(hide) rm -rf $(PRIVATE_DIR) $@
-	$(hide) for f in $(strip $(target_gnu_MODULES)); do \
-	  if [ -f $$f ]; then \
-	    echo SDK: $(if $(SDK_GNU_ERROR),ERROR:,warning:) \
-	        including GNU target $$f >&2; \
-	    FAIL=$(SDK_GNU_ERROR); \
-	  fi; \
-	done; \
-	if [ $$FAIL ]; then exit 1; fi
 	$(hide) ( \
 	    ATREE_STRIP="$(HOST_STRIP) -x" \
 	    $(HOST_OUT_EXECUTABLES)/atree \
@@ -8009,7 +8112,7 @@ $(INTERNAL_SDK_TARGET): $(deps) | $(BUILD_NUMBER_FILE)
 	        development/build/tools/sdk_clean.sh $(PRIVATE_DIR) && \
 	    if [ "$(TARGET_BUILD_VARIANT)" != "user" ] && \
 	       { [ "$(PRODUCT_NAME)" = "sdk" ] || [ "$(PRODUCT_NAME)" = "sdk_with_runtime_apis" ]; }; then \
-	        sed -e "s/{BUILD_NUMBER}/`cat $(BUILD_NUMBER_FILE)`/" -e "s/{PRODUCT_EXPORT_RUNTIME_APIS}/$(PRODUCT_EXPORT_RUNTIME_APIS)/" build/make/core/build_properties_template.xml > $(PRIVATE_DIR)/build_properties.xml; \
+	        sed -e "s/{BUILD_NUMBER}/`cat $(BUILD_NUMBER_FILE)`/" -e "s/{PRODUCT_EXPORT_RUNTIME_APIS}/$(PRODUCT_EXPORT_RUNTIME_APIS)/" -e "s/{BUILD_UUID}/`cat $(BUILD_UUID_FILE)`/" build/make/core/build_properties_template.xml > $(PRIVATE_DIR)/build_properties.xml; \
 	    fi && \
 	    chmod -R ug+rwX $(PRIVATE_DIR) && \
 	    cd $(dir $@) && $(SOONG_ZIP) -rqX $(notdir $@) $(PRIVATE_NAME) \
@@ -8045,19 +8148,13 @@ $(info [$(include_makefiles_total)/$(include_makefiles_total)] finishing Make pa
 include $(BUILD_SYSTEM)/product-graph.mk
 
 # -----------------------------------------------------------------
-# Create SDK repository packages. Must be done after tasks/* since
-# we need the addon rules defined.
-ifneq ($(sdk_repo_goal),)
-include $(TOPDIR)development/build/tools/sdk_repo.mk
-endif
-
-# -----------------------------------------------------------------
 # Extract additional data files used in Layoutlib
 include $(BUILD_SYSTEM)/layoutlib_data.mk
 
 # -----------------------------------------------------------------
 # Desktop pack common variables.
 PACK_IMAGE_SCRIPT := $(HOST_OUT_EXECUTABLES)/pack_image
+PACK_IMAGE_ARGS :=
 PACK_IMAGE_DEPS := $(PACK_IMAGE_SCRIPT) \
 	$(SGDISK) \
 	$(INSTALLED_BOOTIMAGE_TARGET) \
@@ -8072,16 +8169,30 @@ ifneq (,$(strip $(PACK_DESKTOP_ESP_IMAGE)))
   PACK_IMAGE_DEPS += $(INSTALLED_ESPIMAGE_TARGET)
 endif # PACK_DESKTOP_ESP_IMAGE
 
+ifneq ($(filter dtbo, $(AB_OTA_PARTITIONS)),)
+  PACK_IMAGE_DEPS += $(INSTALLED_DTBOIMAGE_TARGET)
+  PACK_IMAGE_ARGS += --dtbo-image $(INSTALLED_DTBOIMAGE_TARGET)
+endif
+
 # -----------------------------------------------------------------
 # Desktop generated firmware filesystem.
 # This artifact is used in two places:
 # 1. Packed into the recovery image.
 # 2. Added into DIST_DIR so that lab provisioning can download the firmware.
-GENERATED_FW_IMAGE := $(call module-built-files,desktop-firmware-squashfs)
+DESKTOP_FIRMWARE_MODULE ?= desktop-firmware-squashfs
+GENERATED_FW_IMAGE := $(call module-built-files,$(DESKTOP_FIRMWARE_MODULE))
 
 # The lab provisioning script expects the format BOARD-firmware.img.
 ifneq (,$(GENERATED_FW_IMAGE))
 $(call dist-for-goals,dist_files,$(GENERATED_FW_IMAGE):${TARGET_PRODUCT}-firmware.img)
+endif
+
+# What is passed into recovery image creation.
+DESKTOP_FIRMWARE_MODULE_RECOVERY := $(GENERATED_FW_IMAGE)
+
+# Only set this after dist call.
+ifneq (,$(DESKTOP_FIRMWARE_MODULE_RECOVERY_INTERCEPT))
+DESKTOP_FIRMWARE_MODULE_RECOVERY := $(call module-built-files,$(DESKTOP_FIRMWARE_MODULE_RECOVERY_INTERCEPT))
 endif
 
 # -----------------------------------------------------------------
@@ -8094,12 +8205,14 @@ ifneq (,$(strip $(PACK_DESKTOP_FILESYSTEM_IMAGES)))
 PACK_IMAGE_TARGET := $(PRODUCT_OUT)/android-desktop_image.bin
 
 $(PACK_IMAGE_TARGET): $(PACK_IMAGE_DEPS)
-	$(PACK_IMAGE_SCRIPT) --out_dir $(PRODUCT_OUT) --noarchive
+	$(PACK_IMAGE_SCRIPT) --out_dir $(PRODUCT_OUT) --noarchive $(PACK_IMAGE_ARGS)
 
 PACKED_IMAGE_ARCHIVE_TARGET := $(PACK_IMAGE_TARGET).gz
 
+# We force stdout redirection (-c) rather than using the keep flag (-fk).
+# To prevent appending extraneous data/garbage to the file.
 $(PACKED_IMAGE_ARCHIVE_TARGET): $(PACK_IMAGE_TARGET) | $(GZIP)
-	$(GZIP) -fk $(PACK_IMAGE_TARGET)
+	$(GZIP) -c $(PACK_IMAGE_TARGET) > $@
 
 $(call dist-for-goals,dist_files,$(PACKED_IMAGE_ARCHIVE_TARGET))
 
@@ -8111,77 +8224,43 @@ endif # PACK_DESKTOP_FILESYSTEM_IMAGES
 # -----------------------------------------------------------------
 # Desktop pack recovery image hook.
 ifeq ($(BOARD_USES_DESKTOP_RECOVERY_IMAGE),true)
+ifeq ($(DESKTOP_FIRMWARE_MODULE_RECOVERY),)
+$(error The desktop recovery image requires AP and EC firmware. \
+	Please ensure RELEASE_FIRMWARE_$(call to-upper,$(TARGET_PRODUCT))_VERSION is set, \
+	or disable the recovery image by specifying \
+	PRODUCT_BUILD_DESKTOP_RECOVERY_IMAGE := false)
+endif # ($(DESKTOP_FIRMWARE_MODULE_RECOVERY),)
 PACK_RECOVERY_IMAGE_TARGET := $(PRODUCT_OUT)/android-desktop_recovery_image.bin
-PACK_RECOVERY_IMAGE_ARGS := --noarchive --recovery --firmware $(GENERATED_FW_IMAGE) --partition-image $(GENERATED_PARTITION_IMAGE)
+PACK_RECOVERY_IMAGE_ARGS := --noarchive --recovery --firmware $(DESKTOP_FIRMWARE_MODULE_RECOVERY) --partition-image $(GENERATED_PARTITION_IMAGE)
 
 ifneq (,$(strip $(PACK_RECOVERY_IMAGE_EXPERIMENTAL)))
 PACK_RECOVERY_IMAGE_ARGS += --experimental
 endif # PACK_RECOVERY_IMAGE_EXPERIMENTAL
 
-$(PACK_RECOVERY_IMAGE_TARGET): $(PACK_IMAGE_DEPS) $(PRODUCT_OUT)/recovery-kernel $(GENERATED_FW_IMAGE) $(GENERATED_PARTITION_IMAGE)
-	$(PACK_IMAGE_SCRIPT) --out_dir $(PRODUCT_OUT) $(PACK_RECOVERY_IMAGE_ARGS)
+$(PACK_RECOVERY_IMAGE_TARGET): $(PACK_IMAGE_DEPS) $(PRODUCT_OUT)/recovery-kernel $(DESKTOP_FIRMWARE_MODULE_RECOVERY) $(GENERATED_PARTITION_IMAGE)
+	$(PACK_IMAGE_SCRIPT) --out_dir $(PRODUCT_OUT) $(PACK_RECOVERY_IMAGE_ARGS) $(PACK_IMAGE_ARGS)
 
 PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET := $(PACK_RECOVERY_IMAGE_TARGET).zst
 
-$(PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET): $(PACK_RECOVERY_IMAGE_TARGET) | $(ZSTD)
+$(PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET): $(PACK_RECOVERY_IMAGE_TARGET) $(ZSTD)
 	$(ZSTD) -T0 -19 -fk $(PACK_RECOVERY_IMAGE_TARGET)
 
 $(call dist-for-goals,dist_files,$(PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET))
+
+PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET_ZIP := $(PACK_RECOVERY_IMAGE_TARGET).zip
+
+$(PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET_ZIP): $(PACK_RECOVERY_IMAGE_TARGET) $(SOONG_ZIP)
+	$(SOONG_ZIP) -o $(PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET_ZIP) -f $(PACK_RECOVERY_IMAGE_TARGET)
+
+$(call dist-for-goals,dist_files,$(PACKED_RECOVERY_IMAGE_ARCHIVE_TARGET_ZIP):recovery_util/recovery.zip)
 
 .PHONY: pack-recovery-image
 pack-recovery-image: $(PACK_RECOVERY_IMAGE_TARGET)
 
 RECOVERY_SWAP_KERNEL_TARGET := $(PRODUCT_OUT)/recovery-kernel-swap
 
-# Has swap kernel for insecure recovery image.
-ifeq ($(BOARD_USES_DESKTOP_RECOVERY_SWAP_KERNEL),true)
-
-$(call dist-for-goals,dist_files,$(RECOVERY_SWAP_KERNEL_TARGET))
-
-PACK_INSECURE_RECOVERY_IMAGE_TARGET := $(PRODUCT_OUT)/android-desktop_insecure_recovery_image.bin
-
-$(PACK_INSECURE_RECOVERY_IMAGE_TARGET): $(PACK_RECOVERY_IMAGE_TARGET) $(UPDATE_PARTITION_SCRIPT) $(RECOVERY_SWAP_KERNEL_TARGET) $(SGDISK)
-	@cp -f $< $@
-	(export SGDISK=$(SGDISK); $(UPDATE_PARTITION_SCRIPT) KERN-A $@ $(RECOVERY_SWAP_KERNEL_TARGET))
-
-PACKED_INSECURE_RECOVERY_IMAGE_ARCHIVE_TARGET := $(PACK_INSECURE_RECOVERY_IMAGE_TARGET).zst
-
-$(PACKED_INSECURE_RECOVERY_IMAGE_ARCHIVE_TARGET): $(PACK_INSECURE_RECOVERY_IMAGE_TARGET) | $(ZSTD)
-	$(ZSTD) -T0 -19 -fk $(PACK_INSECURE_RECOVERY_IMAGE_TARGET)
-
-$(call dist-for-goals,dist_files,$(PACKED_INSECURE_RECOVERY_IMAGE_ARCHIVE_TARGET))
-
-.PHONY: pack-insecure-recovery-image
-pack-insecure-recovery-image: $(PACK_INSECURE_RECOVERY_IMAGE_TARGET)
-
-endif # BOARD_USES_DESKTOP_RECOVERY_SWAP_KERNEL
 
 endif # BOARD_USES_DESKTOP_RECOVERY_IMAGE
-
-# -----------------------------------------------------------------
-# Desktop pack update image hook.
-ifeq ($(BOARD_USES_DESKTOP_UPDATE_IMAGE),true)
-PACK_UPDATE_IMAGE_TARGET := $(PRODUCT_OUT)/android-desktop_update_image.bin
-PACK_UPDATE_IMAGE_ARGS := --noarchive --update --firmware $(GENERATED_FW_IMAGE) --partition-image $(GENERATED_PARTITION_IMAGE)
-
-ifneq (,$(strip $(PACK_UPDATE_IMAGE_EXPERIMENTAL)))
-PACK_UPDATE_IMAGE_ARGS += --experimental
-endif # PACK_UPDATE_IMAGE_EXPERIMENTAL
-
-$(PACK_UPDATE_IMAGE_TARGET): $(PACK_IMAGE_DEPS) $(PRODUCT_OUT)/update-kernel $(GENERATED_FW_IMAGE) $(GENERATED_PARTITION_IMAGE)
-	$(PACK_IMAGE_SCRIPT) --out_dir $(PRODUCT_OUT) $(PACK_UPDATE_IMAGE_ARGS)
-
-PACKED_UPDATE_IMAGE_ARCHIVE_TARGET := $(PACK_UPDATE_IMAGE_TARGET).zst
-
-$(PACKED_UPDATE_IMAGE_ARCHIVE_TARGET): $(PACK_UPDATE_IMAGE_TARGET) | $(ZSTD)
-	$(ZSTD) -T0 -19 -fk $(PACK_UPDATE_IMAGE_TARGET)
-
-$(call dist-for-goals,dist_files,$(PACKED_UPDATE_IMAGE_ARCHIVE_TARGET))
-
-.PHONY: pack-update-image
-pack-update-image: $(PACK_UPDATE_IMAGE_TARGET)
-
-endif # BOARD_USES_DESKTOP_UPDATE_IMAGE
 
 PACK_MIGRATION_IMAGE_SCRIPT := $(HOST_OUT_EXECUTABLES)/pack_migration_image
 
@@ -8191,7 +8270,7 @@ ifeq ($(ANDROID_DESKTOP_MIGRATION_IMAGE),true)
 PACK_MIGRATION_IMAGE_TARGET := $(PRODUCT_OUT)/android-desktop_migration_image.bin
 
 $(PACK_MIGRATION_IMAGE_TARGET): $(PACK_IMAGE_DEPS) $(PACK_MIGRATION_IMAGE_SCRIPT)
-	$(PACK_MIGRATION_IMAGE_SCRIPT) --out_dir $(PRODUCT_OUT) --noarchive
+	$(PACK_MIGRATION_IMAGE_SCRIPT) --out_dir $(PRODUCT_OUT) --noarchive $(PACK_IMAGE_ARGS)
 
 PACKED_MIGRATION_IMAGE_ARCHIVE_TARGET := $(PACK_MIGRATION_IMAGE_TARGET).zst
 

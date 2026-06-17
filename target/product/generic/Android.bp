@@ -74,6 +74,10 @@ generic_symlinks = [
         name: "odm/app",
     },
     {
+        target: "/vendor/odm/apex",
+        name: "odm/apex",
+    },
+    {
         target: "/vendor/odm/bin",
         name: "odm/bin",
     },
@@ -385,14 +389,12 @@ android_filesystem_defaults {
         "selinux_policy_system_ext",
         "system_ext_manifest.xml",
         "system_ext-build.prop",
-        // Base modules when shipping api level is less than or equal to 34
-        "hwservicemanager",
-        "android.hidl.allocator@1.0-service",
 
         ///////////////////////////////////////////
         // media_system_ext
         ///////////////////////////////////////////
         "StatementService",
+        "preinstalled-packages-media-system-ext.xml",
 
         ///////////////////////////////////////////
         // window_extensions_base
@@ -404,12 +406,17 @@ android_filesystem_defaults {
         // base_system
         ///////////////////////////////////////////
         "charger",
-    ] + select(release_flag("RELEASE_APPFUNCTION_SIDECAR"), {
-        true: [
+    ] + select(release_flag("RELEASE_REMOVE_APPFUNCTION_SIDECAR"), {
+        true: [],
+        default: [
             "com.android.extensions.appfunctions",
             "appfunctions.extension.xml",
         ],
-        default: [],
+    }) + select(release_flag("RELEASE_DISABLE_WIFICOND"), {
+        true: [],
+        default: [
+            "wificond",
+        ],
     }),
 }
 
@@ -420,7 +427,7 @@ android_filesystem_defaults {
         // media_product
         ///////////////////////////////////////////
         "webview",
-
+        "preinstalled-packages-media-product.xml",
         ///////////////////////////////////////////
         // base_product
         ///////////////////////////////////////////
@@ -436,6 +443,7 @@ android_filesystem_defaults {
         "product_manifest.xml",
         "selinux_policy_product",
         "product-build.prop",
+        "com.android.hardware.biometrics.fingerprint.virtual",
 
         // AUDIO
         "frameworks_sounds",
@@ -535,6 +543,7 @@ system_image_defaults {
         "abx",
         "aconfigd-system",
         "aflags",
+        "aoad",
         "am",
         "android.software.credentials.prebuilt.xml", // generic_system
         "android.software.webview.prebuilt.xml", // media_system
@@ -542,6 +551,7 @@ system_image_defaults {
         "android.system.suspend-service",
         "apexd",
         "apexd.mainline_patch_level_2",
+        "app-lock-exempt.xml", // base_system
         "appops",
         "approved-ogki-builds.xml", // base_system
         "appwidget",
@@ -558,6 +568,7 @@ system_image_defaults {
         "bugreport",
         "bugreportz",
         "cameraserver",
+        "casefolding_remover",
         "cgroups.json",
         "cmd",
         "content",
@@ -575,6 +586,7 @@ system_image_defaults {
         "dumpsys",
         "e2fsck",
         "enhanced-confirmation.xml", // base_system
+        "evemu-record", // base_system
         "etc_hosts",
         "flags_health_check",
         "framework-audio_effects.xml", // for handheld // handheld_system
@@ -592,6 +604,7 @@ system_image_defaults {
         "gsid",
         "heapprofd",
         "hid",
+        "hidservice",
         "hiddenapi-package-whitelist.xml", // from runtime_libart
         "idc_data",
         "idmap2",
@@ -613,6 +626,7 @@ system_image_defaults {
         "ip", // base_system
         "iptables",
         "kcmdlinectrl",
+        "kcmdlinemodprobe",
         "kernel-lifetimes.xml", // base_system
         "keychars_data",
         "keylayout_data",
@@ -629,11 +643,13 @@ system_image_defaults {
         "mdnsd", // base_system
         "media_profiles_V1_0.dtd", // base_system
         "mediacodec.policy", // base_system
+        "mediacodeclist_generator", // base_system
         "mediaextractor", // base_system
-        "mediametrics", // base_system
         "misctrl", // from base_system
         "mke2fs", // base_system
         "mkfs.erofs", // base_system
+        "mm_daemon", // base_system
+        "mm_daemon_setup", // base_system
         "monkey", // base_system
         "mtectrl", // base_system
         "ndc", // base_system
@@ -653,8 +669,10 @@ system_image_defaults {
         "pm", // base_system
         "prefetch", //base_system
         "preinstalled-packages-asl-files.xml", // base_system
+        "preinstalled-packages-media-system.xml", // media_system
         "preinstalled-packages-platform-generic-system.xml", // generic_system
         "preinstalled-packages-platform-handheld-system.xml", // handheld_system
+        "preinstalled-packages-platform-telephony-system.xml", // telephony_system
         "preinstalled-packages-platform.xml", // base_system
         "preinstalled-packages-strict-signature.xml", // base_system
         "preloaded-classes", // ok
@@ -703,20 +721,22 @@ system_image_defaults {
         "vr", // handheld_system
         "watchdogd", // base_system
         "wifi.rc", // base_system
-        "wificond", // base_system
         "wm", // base_system
-    ] + select(release_flag("RELEASE_PLATFORM_VERSION_CODENAME"), {
+    ] + select(release_flag("RELEASE_NATIVE_OMAPI"), {
+        true: [
+            "omapi",
+        ],
+        default: [],
+    }) + select(release_flag("RELEASE_PLATFORM_VERSION_CODENAME"), {
         "REL": [],
         default: [
             "android.software.preview_sdk.prebuilt.xml", // media_system
         ],
-    }) + select(release_flag("RELEASE_MEMORY_MANAGEMENT_DAEMON"), {
+    }) + select(release_flag("RELEASE_PROCESS_MEMORY_GUARDIAN_DAEMON"), {
         true: [
-            "mm_daemon", // base_system (RELEASE_MEMORY_MANAGEMENT_DAEMON)
+            "pmg_daemon", // base_system (RELEASE_PROCESS_MEMORY_GUARDIAN_DAEMON)
         ],
-        default: [
-            "init-mmd-prop.rc", // base_system
-        ],
+        default: [],
     }) + select(product_variable("debuggable"), {
         true: [
             "alloctop",
@@ -775,6 +795,28 @@ system_image_defaults {
             "zygote_next", // base_system (RELEASE_NATIVE_FRAMEWORK_PROTOTYPE)
         ],
         default: [],
+    }) + select(release_flag("RELEASE_AISEAL_FRAMEWORK"), {
+        true: [
+            "aisealhostservice", // base_system (RELEASE_AISEAL_FRAMEWORK)
+            "AppSearchAiSealConfig", // base_system (RELEASE_AISEAL_FRAMEWORK)
+        ],
+        default: [],
+    }) + select(release_flag("RELEASE_MEDIAMETRICS_MODULE"), {
+        true: [
+            // keep the framework copy, despite the build flag, for a while post-sdk37
+            // so that we're robust in the face of a mismatch.
+            // we can remove this once we've fully rolled out the module-based version.
+            "mediametrics", // base_system (RELEASE_MEDIAMETRICS_MODULE)
+        ],
+        default: [
+            "mediametrics", // base_system (RELEASE_MEDIAMETRICS_MODULE)
+        ],
+    }) + select(release_flag("RELEASE_DEPRECATE_RUNTIME_APEX"), {
+        true: [
+            "linkerconfig", // base_system
+        ],
+        default: [
+        ],
     }),
     multilib: {
         common: {
@@ -812,7 +854,6 @@ system_image_defaults {
                 "LiveWallpapersPicker", // generic_system, full_base
                 "LocalTransport", // base_system
                 "ManagedProvisioning", // handheld_system
-                "MediaProviderLegacy", // base_system
                 "MmsService", // handheld_system
                 "MtpService", // handheld_system
                 "MusicFX", // handheld_system
@@ -825,7 +866,6 @@ system_image_defaults {
                 "PrintSpooler", // handheld_system
                 "PrivateSpace", // handheld_system
                 "ProxyHandler", // handheld_system
-                "SecureElement", // handheld_system
                 "SettingsProvider", // base_system
                 "SharedStorageBackup", // handheld_system
                 "Shell", // base_system
@@ -834,8 +874,6 @@ system_image_defaults {
                 "Stk", // generic_system
                 "Tag", // generic_system
                 "TeleService", // handheld_system
-                "Telecom", // handheld_system
-                "TelephonyProvider", // handheld_system
                 "Traceur", // handheld_system
                 "UserDictionaryProvider", // handheld_system
                 "VpnDialogs", // handheld_system
@@ -851,6 +889,7 @@ system_image_defaults {
                 "charger_res_images", // generic_system
                 "com.android.apex.cts.shim.v1_prebuilt", // ok
                 "com.android.cellbroadcast", // telephony_system
+                "com.android.crashrecovery", // base_system
                 "com.android.future.usb.accessory", // media_system
                 "com.android.location.provider", // base_system
                 "com.android.media.remotedisplay", // media_system
@@ -858,7 +897,6 @@ system_image_defaults {
                 "com.android.mediadrm.signer", // media_system
                 "com.android.nfc_extras", // ok
                 "com.android.nfcservices", // base_system (RELEASE_PACKAGE_NFC_STACK != NfcNci)
-                "com.android.runtime", // ok
                 "dex_bootjars",
                 "ext", // from runtime_libart
                 "framework-graphics", // base_system
@@ -882,12 +920,11 @@ system_image_defaults {
                 "system_compatibility_matrix.xml", //base_system
                 "telephony-common", // libs from TeleService
                 "voip-common", // base_system
-            ] + select(soong_config_variable("ANDROID", "release_crashrecovery_module"), {
-                "true": [
-                    "com.android.crashrecovery", // base_system (RELEASE_CRASHRECOVERY_MODULE)
-                ],
+                "wificond_compat_symlink_module", // base_system
+            ] + select(release_flag("RELEASE_NATIVE_OMAPI"), {
+                true: [],
                 default: [
-                    "framework-platformcrashrecovery", // base_system
+                    "SecureElement", // handheld_system
                 ],
             }) + select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
                 true: [
@@ -901,11 +938,6 @@ system_image_defaults {
                     "com.android.profiling", // base_system (RELEASE_PACKAGE_PROFILING_MODULE)
                 ],
                 default: [],
-            }) + select(release_flag("RELEASE_MOVE_VCN_TO_MAINLINE"), {
-                true: [],
-                default: [
-                    "framework-connectivity-b", // base_system
-                ],
             }) + select(release_flag("RELEASE_UPROBESTATS_MODULE"), {
                 true: [
                     "com.android.uprobestats", // base_system (RELEASE_UPROBESTATS_MODULE)
@@ -938,6 +970,46 @@ system_image_defaults {
                     "EyeDropper", // handheld_system (RELEASE_ACONFIG_INCLUDE_EYE_DROPPER_APP)
                 ],
                 default: [],
+            }) + select(release_flag("RELEASE_CONSCRYPT_NSC"), {
+                true: [
+                    "framework-conscrypt-nsc",
+                ],
+                default: [
+                    "framework-network-security-config", // base_system
+                ],
+            }) + select(release_flag("RELEASE_TELECOM_MAINLINE_MODULE"), {
+                true: [
+                    "TelecomShim", // handheld_system
+                ],
+                default: [
+                    "Telecom", // handheld_system
+                    "TelecomUi", // handheld_system
+                    "TelecomServiceResources", // handheld_system
+                    "framework-telecom", // base_system
+                ],
+            }) + select(release_flag("RELEASE_NPUMANAGER_MODULE"), {
+                true: [
+                    "com.android.npumanager", // base_system (RELEASE_NPUMANAGER_MODULE)
+                ],
+                default: [],
+            }) + select(release_flag("RELEASE_WEBAPP_MODULE"), {
+                true: [
+                    "com.android.webapp", // base_system (RELEASE_WEBAPP_MODULE)
+                ],
+                default: [],
+            }) + select(soong_config_variable("ANDROID_MULTIUSER", "PRODUCT_USE_HSUM"), {
+                true: [
+                    "TelephonyProviderHsum",
+                ],
+                default: [
+                    "TelephonyProvider", // handheld_system
+                ],
+            }) + select(release_flag("RELEASE_DEPRECATE_RUNTIME_APEX"), {
+                true: [
+                ],
+                default: [
+                    "com.android.runtime", // base_system
+                ],
             }),
         },
         prefer32: {
@@ -956,14 +1028,6 @@ system_image_defaults {
         },
         both: {
             deps: [
-                "android.hardware.biometrics.fingerprint@2.1", // generic_system
-                "android.hardware.radio.config@1.0", // generic_system
-                "android.hardware.radio.deprecated@1.0", // generic_system
-                "android.hardware.radio@1.0", // generic_system
-                "android.hardware.radio@1.1", // generic_system
-                "android.hardware.radio@1.2", // generic_system
-                "android.hardware.radio@1.3", // generic_system
-                "android.hardware.radio@1.4", // generic_system
                 "android.hardware.secure_element@1.0", // generic_system
                 "app_process", // base_system
                 "boringssl_self_test", // base_system
@@ -1074,6 +1138,22 @@ system_image_defaults {
                 default: [
                     "libuprobestats_client", // base_system internal
                 ],
+            }) + select(release_flag("RELEASE_NATIVE_FRAMEWORK_PROTOTYPE"), {
+                true: [
+                    "libandroid_native_denylist", // base_system (RELEASE_NATIVE_FRAMEWORK_PROTOTYPE)
+                ],
+                default: [],
+            }) + select(release_flag("RELEASE_DEPRECATE_RUNTIME_APEX"), {
+                true: [
+                    "crash_dump", // base_system
+                ],
+                default: [
+                ],
+            }) + select(release_flag("RELEASE_NPUMANAGER_MODULE"), {
+                true: [
+                    "libnpumanager", // base_system (RELEASE_NPUMANAGER_MODULE)
+                ],
+                default: [],
             }),
         },
     },
@@ -1085,6 +1165,9 @@ system_image_defaults {
             ],
         },
     },
+    // Do not use a fixed timestamp.
+    // This prevents a full push on the first adb sync.
+    no_use_fixed_timestamp: true,
 }
 
 android_system_image {

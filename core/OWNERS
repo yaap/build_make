@@ -1,6 +1,6 @@
 
 # For global Proguard rules
-per-file proguard*.flags = jdduke@google.com
+per-file *proguard* = file:/core/proguard/OWNERS
 
 # For version updates
 per-file version_defaults.mk =bkhalife@google.com,jainne@google.com,lokeshgoel@google.com,lubomir@google.com,pscovanner@google.com

@@ -21,6 +21,11 @@
         <install-in user-type="FULL" />
     </install-in-user-type>
 
+    <!-- Core wallpaper app in AOSP (ThemePicker) -->
+    <install-in-user-type package="com.android.wallpaper">
+        <install-in user-type="FULL" />
+    </install-in-user-type>
+
     <!-- System packages that should not be pre-installed on the CLONE profile. -->
     <!-- Messages -->
     <install-in-user-type package="com.android.messaging">

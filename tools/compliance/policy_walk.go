@@ -95,13 +95,13 @@ func WalkTopDownBreadthFirst(ctx EdgeContextProvider, lg *LicenseGraph, visit Vi
 				edgeContext = ctx.Context(lg, *path, edge)
 			}
 			path.Push(edge, edgeContext)
-			if visit(lg, edge.dependency, *path){
+			if visit(lg, edge.dependency, *path) {
 				edgesToWalk = append(edgesToWalk, edge)
 			}
 			path.Pop()
 		}
 
-		for _, edge := range(edgesToWalk) {
+		for _, edge := range edgesToWalk {
 			var edgeContext interface{}
 			if ctx == nil {
 				edgeContext = nil
@@ -117,12 +117,12 @@ func WalkTopDownBreadthFirst(ctx EdgeContextProvider, lg *LicenseGraph, visit Vi
 	path.Clear()
 	rootsToWalk := make([]*TargetNode, 0, len(lg.rootFiles))
 	for _, r := range lg.rootFiles {
-		if visit(lg, lg.targets[r], *path){
+		if visit(lg, lg.targets[r], *path) {
 			rootsToWalk = append(rootsToWalk, lg.targets[r])
 		}
 	}
 
-	for _, rnode := range(rootsToWalk) {
+	for _, rnode := range rootsToWalk {
 		walk(rnode)
 	}
 }

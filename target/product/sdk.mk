@@ -43,3 +43,12 @@ endif
 
 # Include Wear flag values so that Wear-related APIs are build in sdks.
 PRODUCT_RELEASE_CONFIG_MAPS += $(wildcard vendor/google_shared/wear/release/release_config_map.textproto)
+
+# Control soong only flag with release flag.
+PRODUCT_SOONG_ONLY := $(RELEASE_SOONG_ONLY_SDK)
+
+# Set to false to prevent build failure on soong-only mode build.
+# For soong+make mode it will only print warning message if the build actually
+# don't have kernel information for the build target but it will be treated as
+# build failure in soong.
+PRODUCT_ENABLE_UFFD_GC := false

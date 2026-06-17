@@ -27,10 +27,10 @@ import (
 
 var (
 	allowExternalEntrypoint = flag.Bool("allow_external_entrypoint", false, "allow the entrypoint starlark file to be outside of the source tree")
-	modeFlag  = flag.String("mode", "", "the general behavior of rbcrun. Can be \"rbc\" or \"make\". Required.")
-	rootdir  = flag.String("d", ".", "the value of // for load paths")
-	perfFile = flag.String("perf", "", "save performance data")
-	identifierRe = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_]*")
+	modeFlag                = flag.String("mode", "", "the general behavior of rbcrun. Can be \"rbc\" or \"make\". Required.")
+	rootdir                 = flag.String("d", ".", "the value of // for load paths")
+	perfFile                = flag.String("perf", "", "save performance data")
+	identifierRe            = regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_]*")
 )
 
 func getEntrypointStarlarkFile() string {

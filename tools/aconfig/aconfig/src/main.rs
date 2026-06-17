@@ -30,7 +30,7 @@ use std::env;
 use std::fs;
 use std::fs::File;
 use std::io;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Cursor, Read, Write};
 use std::path::Path;
 
 #[cfg(test)]
@@ -45,8 +45,13 @@ fn load_finalized_flags() -> Result<FinalizedFlagMap> {
 fn open_zero_or_more_files(file_paths: &Vec<String>) -> Result<Vec<Input>> {
     let mut opened_files = vec![];
     for path in file_paths {
-        let file = Box::new(File::open(path).with_context(|| format!("Couldn't open {path}"))?);
-        opened_files.push(Input { source: path.to_string(), reader: file });
+        let metadata = std::fs::metadata(path)
+            .with_context(|| format!("failed to read metadata for file {path}"))?;
+        let mut buffer = vec![0; metadata.len() as usize];
+        let mut file = File::open(path).with_context(|| format!("failed to open {path}"))?;
+        file.read(&mut buffer).with_context(|| format!("failed to read {path}"))?;
+        let cursor = Cursor::new(buffer);
+        opened_files.push(Input { source: path.to_string(), reader: Box::new(cursor) });
     }
     Ok(opened_files)
 }
@@ -121,12 +126,16 @@ fn main() -> Result<()> {
                 allow_read_write,
                 force_read_only,
             };
+            let config_input = mainline_beta_namespace_config
+                .as_ref()
+                .map(|path| open_single_file(path))
+                .transpose()?;
             let output = commands::parse_flags(
                 &package,
                 &container,
                 open_zero_or_more_files(&declarations)?, // declarations
                 open_zero_or_more_files(&values)?,       // values
-                mainline_beta_namespace_config,
+                config_input,
                 extended_permissions_options,
             )
             .context("failed to create cache")?;
@@ -137,12 +146,14 @@ fn main() -> Result<()> {
             out_dir,
             mode,
             single_exported_file,
+            allow_impl_interface_removal,
         } => {
             let finalized_flags = load_finalized_flags()?;
             let generated_files = commands::create_java_lib(
                 open_single_file(&cache_path)?, // cache
                 mode,
                 single_exported_file,
+                allow_impl_interface_removal,
                 finalized_flags,
             )
             .context("failed to create java lib")?;

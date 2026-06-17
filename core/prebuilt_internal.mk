@@ -18,6 +18,7 @@ endif
 
 my_32_64_bit_suffix := $(if $($(LOCAL_2ND_ARCH_VAR_PREFIX)$(my_prefix)IS_64_BIT),64,32)
 
+my_prebuilt_src_file :=
 ifdef LOCAL_PREBUILT_MODULE_FILE
   my_prebuilt_src_file := $(LOCAL_PREBUILT_MODULE_FILE)
 else ifdef LOCAL_SRC_FILES_$($(my_prefix)$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH)

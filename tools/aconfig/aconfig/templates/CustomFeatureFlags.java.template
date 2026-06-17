@@ -34,11 +34,10 @@ public class CustomFeatureFlags implements FeatureFlags \{
     public CustomFeatureFlags(BiPredicate<String, Predicate<FeatureFlags>> getValueImpl) \{
         mGetValueImpl = getValueImpl;
     }
-
-{{ -for item in flag_elements}}
+{{ for item in overridable_flag_elements }}
     @Override
-{{ if not library_exported- }}
-{{ if support_uau_annotation- }}
+{{ -if not library_exported }}
+{{ -if support_uau_annotation }}
     @UnsupportedAppUsage
 {{ -endif }}
 {{ -endif }}
@@ -59,7 +58,7 @@ public class CustomFeatureFlags implements FeatureFlags \{
 
     @com.android.aconfig.annotations.AssumeTrueForR8
     private boolean isOptimizationEnabled() \{
-        return false;
+        return {optimize_read_only_getter};
     }
 {{ -endif }}
 
@@ -86,8 +85,8 @@ public class CustomFeatureFlags implements FeatureFlags \{
             ""{# The empty string here is to resolve the ending comma #}
         )
     );
-
 {{ -if library_exported }}
+
     private Map<String, Boolean> mFinalizedFlags = new HashMap<>(
         Map.ofEntries(
             {{ -for item in flag_elements }}
@@ -105,5 +104,5 @@ public class CustomFeatureFlags implements FeatureFlags \{
         }
         return mFinalizedFlags.get(flagName);
     }
-{{ -endif }}
+{{ endif }}
 }

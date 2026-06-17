@@ -81,3 +81,6 @@ endif
 ifeq ($(strip $(TARGET_USES_AOSP_FOR_WLAN)),true)
     $(call soong_config_set,wifi,target_uses_aosp_for_wlan,true)
 endif
+ifdef WIFI_HAL_RETRY_SET_MAC_ADDRESS
+    $(call soong_config_set,wifi,hal_retry_set_mac_address,true)
+endif

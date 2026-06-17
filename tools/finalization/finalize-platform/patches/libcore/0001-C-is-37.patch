@@ -1,0 +1,49 @@
+From a3f452b0538a068228b91d78e62570cbd77706d4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 29 Jan 2026 12:23:21 +0000
+Subject: [PATCH 1/2] C is 37
+
+It's not a fifty-four-year-old programming language; it's not an
+element common to all known life; it's the next Android release!
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: I5937e316ee6e104435a0ece89175517657d7b166
+---
+ .../main/java/dalvik/annotation/compat/VersionCodes.java   | 7 +++----
+ mmodules/intracoreapi/api/intra/current.txt                | 1 +
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/dalvik/src/main/java/dalvik/annotation/compat/VersionCodes.java b/dalvik/src/main/java/dalvik/annotation/compat/VersionCodes.java
+index 6575693863e..8ded9c0d43b 100644
+--- a/dalvik/src/main/java/dalvik/annotation/compat/VersionCodes.java
++++ b/dalvik/src/main/java/dalvik/annotation/compat/VersionCodes.java
+@@ -103,9 +103,8 @@ public class VersionCodes {
+     public static final int BAKLAVA = 36;
+ 
+     /**
+-     * C.
+-     * C comes after B. Not yet announced Android release.
+-     * @hide
++     * Cinnamon Bun.
+      */
+-    public static final int C = CUR_DEVELOPMENT;
++    @IntraCoreApi
++    public static final int CINNAMON_BUN = 37;
+ }
+diff --git a/mmodules/intracoreapi/api/intra/current.txt b/mmodules/intracoreapi/api/intra/current.txt
+index 2a216605bf0..5d0ebf8c08d 100644
+--- a/mmodules/intracoreapi/api/intra/current.txt
++++ b/mmodules/intracoreapi/api/intra/current.txt
+@@ -31,6 +31,7 @@ package dalvik.annotation.compat {
+ 
+   @libcore.api.IntraCoreApi public class VersionCodes {
+     field @libcore.api.IntraCoreApi public static final int BAKLAVA = 36; // 0x24
++    field @libcore.api.IntraCoreApi public static final int CINNAMON_BUN = 37; // 0x25
+     field @libcore.api.IntraCoreApi public static final int CUR_DEVELOPMENT = 10000; // 0x2710
+     field @libcore.api.IntraCoreApi public static final int O = 26; // 0x1a
+     field @libcore.api.IntraCoreApi public static final int P = 28; // 0x1c
+-- 
+2.53.0.rc2.204.g2597b5adb4-goog
+

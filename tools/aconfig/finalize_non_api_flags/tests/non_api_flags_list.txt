@@ -1,0 +1,5 @@
+record_finalized_flags.test.bar
+record_finalized_flags.test.baz
+// This is a comment, not a flag!
+
+record_finalized_flags.test.foo

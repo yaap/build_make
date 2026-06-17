@@ -1,0 +1,163 @@
+// Copyright (C) 2025 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_build",
+}
+
+// Soong API Protobuf Message
+java_library_host {
+    name: "soong_api_proto",
+    srcs: ["proto/soong_api.proto"],
+    proto: {
+        type: "full",
+        include_dirs: ["external/protobuf/src"],
+    },
+    libs: ["libprotobuf-java-full"],
+}
+
+// Soong API gRPC Service Stubs
+java_library_host {
+    name: "soong_api_grpc_proto",
+    srcs: ["proto/soong_api.proto"],
+    proto: {
+        plugin: "grpc-java-plugin",
+        include_dirs: ["external/protobuf/src"],
+    },
+    static_libs: [
+        "soong_api_proto",
+        "grpc-java",
+        "guava",
+        "perfmark-api-lib",
+        "javax-annotation-api-prebuilt-host-jar",
+    ],
+}
+
+// DAO Library for SNAPI
+java_library_host {
+    name: "soong_api_dao_lib",
+    srcs: [
+        "src/main/java/com/android/soong/api/db/SoongApiDao.java",
+    ],
+    static_libs: [
+        "soong_api_proto",
+        "libprotobuf-java-util-full",
+        "xerial-sqlite-jdbc",
+        "libprotobuf-java-full",
+    ],
+}
+
+// Loader Library for SNAPI
+java_library_host {
+    name: "soong_api_loader_lib",
+    srcs: [
+        "src/main/java/com/android/soong/api/loader/SoongApiLoader.java",
+    ],
+    static_libs: [
+        "soong_api_proto",
+        "libprotobuf-java-util-full",
+        "gson",
+        "xerial-sqlite-jdbc",
+    ],
+}
+
+// SNAPI DB Loader Binary
+java_binary_host {
+    name: "soong_api_db_loader",
+    srcs: [
+        "src/main/java/com/android/soong/api/loader/SoongApiLoaderMain.java",
+    ],
+    main_class: "com.android.soong.api.loader.SoongApiLoaderMain",
+    static_libs: [
+        "soong_api_loader_lib",
+    ],
+}
+
+// SNAPI Tests
+java_test_host {
+    name: "soong_api_tests",
+    owner: "google",
+    srcs: [
+        "src/test/java/**/*.java",
+    ],
+    static_libs: [
+        "soong_api_loader_lib",
+        "soong_api_dao_lib",
+        "soong_api_grpc_proto",
+        "soong_api_server_lib",
+        "junit",
+        "grpc-java-testing",
+        "grpc-java",
+    ],
+    test_options: {
+        unit_test: true,
+    },
+}
+
+// Server Library
+java_library_host {
+    name: "soong_api_server_lib",
+    srcs: ["src/main/java/com/android/soong/api/server/**/*.java"],
+    static_libs: [
+        "soong_api_dao_lib",
+        "soong_api_grpc_proto",
+        // gRPC runtime
+        "grpc-java",
+        "grpc-java-netty-shaded",
+        "guava",
+        "jsr305",
+        "perfmark-api-lib",
+    ],
+}
+
+// API Server Binary
+java_binary_host {
+    name: "soong_api_server",
+    main_class: "com.android.soong.api.server.SoongApiServer",
+    static_libs: [
+        "soong_api_server_lib",
+        "soong_api_dao_lib",
+        "soong_api_proto",
+        "gson",
+        "xerial-sqlite-jdbc",
+        "grpc-java",
+        "grpc-java-netty-shaded",
+    ],
+}
+
+// For Soong API Python Client Library
+// Generate Python Protobuf & gRPC code
+genrule {
+    name: "soong_api_python_protoc_gen",
+    tools: [
+        "aprotoc",
+        "protoc-gen-grpc-python-plugin",
+    ],
+    srcs: [
+        "proto/soong_api.proto",
+    ],
+    out: [
+        "soong_api_pb2.py",
+        "soong_api_pb2_grpc.py",
+    ],
+    // Note: We strip the proto/ prefix so the generated files are at the root of the genDir
+    // allowing direct 'import soong_api_pb2' in the python code.
+    cmd: "$(location aprotoc) " +
+        "--plugin=protoc-gen-grpc=$(location protoc-gen-grpc-python-plugin) " +
+        "--python_out=$(genDir) " +
+        "--grpc_out=$(genDir) " +
+        "-I $$(dirname $(location proto/soong_api.proto)) " +
+        "$(location proto/soong_api.proto)",
+}

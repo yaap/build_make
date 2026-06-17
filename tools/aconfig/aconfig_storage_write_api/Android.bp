@@ -1,5 +1,6 @@
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
 }
 
 rust_defaults {
@@ -17,6 +18,10 @@ rust_defaults {
         "//apex_available:anyapex",
         "//apex_available:platform",
     ],
+    cfgs: select(release_flag("RELEASE_ACONFIG_PARSE_V4"), {
+        true: ["enable_parse_v4"],
+        default: [],
+    }),
 }
 
 rust_library {

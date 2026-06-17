@@ -1,0 +1,70 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
+}
+
+rust_defaults {
+    name: "convert_mainline_beta_namespace_config.defaults",
+    edition: "2021",
+    clippy_lints: "android",
+    lints: "android",
+    rustlibs: [
+        "libanyhow",
+        "libclap",
+        "libserde",
+        "libserde_json",
+        "libtinytemplate",
+    ],
+    features: select(release_flag("RELEASE_ACONFIG_SUPPORT_MINOR_SDK"), {
+        true: ["support_minor_sdk"],
+        default: [],
+    }),
+}
+
+rust_binary_host {
+    name: "convert_mainline_beta_namespace_config",
+    defaults: ["convert_mainline_beta_namespace_config.defaults"],
+    crate_root: "src/convert_mainline_beta_namespace_config.rs",
+    srcs: ["templates/mainline_beta_namespace_config.rs.template"],
+}
+
+rust_test_host {
+    name: "convert_mainline_beta_namespace_config.test",
+    defaults: ["convert_mainline_beta_namespace_config.defaults"],
+    test_suites: ["general-tests"],
+    crate_root: "src/convert_mainline_beta_namespace_config.rs",
+    srcs: ["templates/mainline_beta_namespace_config.rs.template"],
+    rustlibs: [],
+}
+
+genrule {
+    name: "mainline_beta_namespace_config.rs",
+    tools: [":convert_mainline_beta_namespace_config"],
+    srcs: [":mainline_beta_namespace_config.json"],
+    out: ["mainline_beta_namespace_config.rs"],
+    cmd: "$(location) --json-file $(in) --rust-file $(out)",
+}
+
+rust_defaults {
+    name: "mainline_beta_namespace_config.defaults",
+    edition: "2021",
+    clippy_lints: "android",
+    lints: "android",
+    rustlibs: [],
+    features: select(release_flag("RELEASE_ACONFIG_SUPPORT_MINOR_SDK"), {
+        true: ["support_minor_sdk"],
+        default: [],
+    }),
+}
+
+rust_library {
+    name: "libmainline_beta_namespace_config",
+    crate_name: "mainline_beta_namespace_config",
+    defaults: ["mainline_beta_namespace_config.defaults"],
+    host_supported: true,
+    srcs: [":mainline_beta_namespace_config.rs"],
+    apex_available: [
+        "com.android.configinfrastructure",
+    ],
+    min_sdk_version: "34",
+}

@@ -1,6 +1,9 @@
+package {
+    default_team: "trendy_team_android_core_experiments",
+}
+
 cc_test {
     name: "aconfig_storage_file.test.cpp",
-    team: "trendy_team_android_core_experiments",
     srcs: [
         "storage_file_test.cpp",
     ],
@@ -20,7 +23,6 @@ cc_test {
 
 android_test {
     name: "aconfig_storage_file.test.java",
-    team: "trendy_team_android_core_experiments",
     srcs: [
         "srcs/**/*.java",
     ],
@@ -55,6 +57,10 @@ filegroup {
         "data/v3/flag_v3.map",
         "data/v3/flag_v3.val",
         "data/v3/flag_v3.info",
+        "data/v4/package_v4.map",
+        "data/v4/flag_v4.map",
+        "data/v4/flag_v4.val",
+        "data/v4/flag_v4.info",
     ],
     visibility: [
         "//build/make/tools/aconfig:__subpackages__",

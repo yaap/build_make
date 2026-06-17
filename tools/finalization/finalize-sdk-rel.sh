@@ -2,12 +2,6 @@
 
 set -ex
 
-function revert_droidstubs_hack() {
-    if grep -q 'STOPSHIP: RESTORE THIS LOGIC WHEN DECLARING "REL" BUILD' "$top/build/soong/java/droidstubs.go" ; then
-        patch --strip=1 --no-backup-if-mismatch --directory="$top/build/soong" --input=../../build/make/tools/finalization/build_soong_java_droidstubs.go.revert_hack.diff
-    fi
-}
-
 function apply_prerelease_sdk_hack() {
     if ! grep -q 'STOPSHIP: hack for the pre-release SDK' "$top/frameworks/base/core/java/android/content/pm/parsing/FrameworkParsingPackageUtils.java" ; then
         patch --strip=1 --no-backup-if-mismatch --directory="$top/frameworks/base" --input=../../build/make/tools/finalization/frameworks_base.apply_hack.diff
@@ -17,9 +11,6 @@ function apply_prerelease_sdk_hack() {
 function finalize_sdk_rel() {
     local top="$(dirname "$0")"/../../../..
     source $top/build/make/tools/finalization/environment.sh
-
-    # revert droidstubs hack now we are switching to REL
-    revert_droidstubs_hack
 
     # let the apps built with pre-release SDK parse
     apply_prerelease_sdk_hack

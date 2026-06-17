@@ -33,6 +33,15 @@ PRODUCT_PACKAGES_SHIPPING_API_LEVEL_34 += \
     android.hidl.memory@1.0-impl \
 
 # AppFunction Extensions
-ifneq (,$(RELEASE_APPFUNCTION_SIDECAR))
+ifeq (,$(RELEASE_REMOVE_APPFUNCTION_SIDECAR))
     $(call inherit-product, $(SRC_TARGET_DIR)/product/app_function_extensions.mk)
+endif
+
+ifeq ($(RELEASE_DISABLE_WIFICOND),true)
+    # Devices shipping API Level 33 and below may rely on wificond to
+    # implement libwifikeystorehal
+    PRODUCT_PACKAGES_SHIPPING_API_LEVEL_33 += wificond
+else
+    # Include wificond if the RELEASE_DISABLE_WIFICOND build flag is false
+    PRODUCT_PACKAGES += wificond
 endif

@@ -1,5 +1,6 @@
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
 }
 
 rust_defaults {
@@ -24,6 +25,7 @@ rust_defaults {
         "libserde_json",
         "libtinytemplate",
         "libconvert_finalized_flags",
+        "libwalkdir",
     ],
     cfgs: select(release_flag("RELEASE_ACONFIG_FINGERPRINT_RUST"), {
         true: ["enable_fingerprint_rust"],
@@ -36,11 +38,31 @@ rust_defaults {
         select(release_flag("RELEASE_JARJAR_FLAGS_IN_FRAMEWORK"), {
             true: ["enable_jarjar_flags_in_framwork"],
             default: [],
+        }) +
+        select(release_flag("RELEASE_ACONFIG_OPTIMIZE_READ_ONLY_JAVA"), {
+            true: ["optimize_read_only_java"],
+            default: [],
+        }) +
+        select(release_flag("RELEASE_ACONFIG_PARSE_V4"), {
+            true: ["enable_parse_v4"],
+            default: [],
+        }) +
+        select(release_flag("RELEASE_ACONFIG_DEFAULT_ALLOW_JAVA_IMPL_INTERFACE_REMOVAL"), {
+            true: ["default_allow_java_impl_interface_removal"],
+            default: [],
+        }) +
+        select(release_flag("RELEASE_ACONFIG_ENABLE_INT_FLAG"), {
+            true: ["enable_int_flag"],
+            default: [],
         }),
     features: select(release_flag("RELEASE_ACONFIG_DEFAULT_EXPORTED_READS_TO_DISABLED"), {
         true: ["default_exported_reads_to_disabled"],
         default: [],
-    }),
+    }) +
+        select(release_flag("RELEASE_ACONFIG_GENERATE_CHECKS_SDK_ANNOTATION"), {
+            true: ["generate_checks_sdk_annotation"],
+            default: [],
+        }),
 }
 
 rust_binary_host {
@@ -64,8 +86,14 @@ rust_test_host {
     ],
     test_suites: ["general-tests"],
     data: [
-        "tests/mainline_beta_namespaces.json",
+        "tests/golden/java/**/*.java.golden",
     ],
+}
+
+filegroup {
+    name: "mainline_beta_namespace_config.json",
+    // TODO: Read release_flag instead.
+    srcs: ["config/mainline_beta_namespaces.json"],
 }
 
 // integration tests: general
@@ -123,6 +151,8 @@ java_aconfig_library {
 java_aconfig_library {
     name: "aconfig_test_java_library",
     aconfig_declarations: "aconfig.test.flags",
+    // The tests explicitly reference the internal FeatureFlags-related types.
+    preserve_legacy_impl_interface: true,
 }
 
 java_aconfig_library {
@@ -161,6 +191,8 @@ java_aconfig_library {
     aconfig_declarations: "aconfig.test.flags",
     host_supported: true,
     mode: "test",
+    // The tests explicitly reference the internal FeatureFlags-related types.
+    preserve_legacy_impl_interface: true,
 }
 
 java_test_host {

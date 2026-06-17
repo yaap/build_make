@@ -25,3 +25,7 @@ ifeq ($(filter memtag_heap,$(SANITIZE_TARGET)),)
 endif
 PRODUCT_PRODUCT_PROPERTIES += persist.arm64.memtag.default=sync
 PRODUCT_SCUDO_ALLOCATION_RING_BUFFER_SIZE := 131072
+
+# TODO(ivanlozano): Remove this once the root-cause of b/470094049 is determined
+# and resolved.
+ENABLE_XOM := false

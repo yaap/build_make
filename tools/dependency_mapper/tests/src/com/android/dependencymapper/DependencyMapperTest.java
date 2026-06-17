@@ -65,6 +65,8 @@ public class DependencyMapperTest {
     public static String KT_DEP_DATA_PACKAGE = "com.android.ktdep.DepOnKotlin";
     public static String KT_DEP_KT_CLASS = "com.android.ktdept.KtClass";
 
+    public static String KT_DEP_KT_CLASS_PATH = "com/android/ktdept/KtClass.class";
+
     static {
         JavaSourceData audioConstants = new JavaSourceData(AUDIO_CONS_PATH, AUDIO_CONS_PACKAGE + ".java");
         JavaSourceData audioToneConstants =
@@ -203,7 +205,7 @@ public class DependencyMapperTest {
                 KT_DEP_DATA_PATH,
                 0,
                 new ArrayList<>(),
-                new ArrayList<>(List.of(KT_DEP_KT_CLASS)));
+                new ArrayList<>(List.of(KT_DEP_KT_CLASS_PATH)));
     }
 
     private void validateDependencies(

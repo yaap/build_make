@@ -53,6 +53,7 @@ INFO_METADATA_FOUND_FOR_PACKAGE = 'METADATA file found for packages:'
 SOONG_PREBUILT_MODULE_TYPES = [
   'android_app_import',
   'android_library_import',
+  'apex_set',
   'cc_prebuilt_binary',
   'cc_prebuilt_library',
   'cc_prebuilt_library_headers',

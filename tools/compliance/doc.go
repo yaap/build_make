@@ -16,7 +16,6 @@
 // When changing this file consider whether the change also applies to README.md
 
 /*
-
 Package compliance provides an approved means for reading, consuming, and
 analyzing license metadata graphs.
 

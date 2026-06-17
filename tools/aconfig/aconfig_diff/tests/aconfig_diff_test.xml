@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration description="Config for aconfig diff tests">
+    <option name="test-suite-tag" value="aconfig_diff_test" />
+    <test class="com.android.tradefed.testtype.HostTest" >
+        <option name="class" value="com.android.aconfig.diff.test.AconfigDiffHostTest" />
+    </test>
+</configuration>

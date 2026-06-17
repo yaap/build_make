@@ -191,6 +191,8 @@ def main():
 
           # Every license file is in a <file-content> element
           licenses = db.get_module_licenses(installed_file_metadata.get('name', ''), installed_file_metadata['module_path'])
+          # For make modules
+          licenses['unused_name'] = metadata['license_text']
 
         # Installed file is from PRODUCT_COPY_FILES
         elif metadata['product_copy_files']:

@@ -45,17 +45,25 @@ class ClearcutEventHandler(PatternMatchingEventHandler):
       single_events_size_threshold: int,
       is_dry_run: bool = False,
       cclient: clearcut_client.Clearcut | None = None,
+      target_repo: str = "android",
+      ignore_patterns: list[str] | None = None,
   ):
-    super().__init__(patterns=["*"], ignore_directories=True)
+    super().__init__(
+        patterns=["*"], ignore_patterns=ignore_patterns, ignore_directories=True
+    )
     self.root_monitoring_path = path
     self.flush_interval_sec = flush_interval_sec
     self.single_events_size_threshold = single_events_size_threshold
     self.is_dry_run = is_dry_run
     self.cclient = cclient or clearcut_client.Clearcut(LOG_SOURCE)
+    self.target_repo = target_repo
 
     self.user_name = getpass.getuser()
     self.host_name = platform.node()
-    self.source_root = os.environ.get("ANDROID_BUILD_TOP", "")
+    if target_repo == "chrome":
+      self.source_root = self.root_monitoring_path
+    else:
+      self.source_root = os.environ.get("ANDROID_BUILD_TOP", "")
 
     self.pending_events = []
     self._scheduled_log_thread = None
@@ -110,10 +118,11 @@ class ClearcutEventHandler(PatternMatchingEventHandler):
           user_name=self.user_name,
           host_name=self.host_name,
           source_root=self.source_root,
+          target_repo=self.target_repo,
       )
       event_proto.single_edit_event.CopyFrom(
           edit_event_pb2.EditEvent.SingleEditEvent(
-              edit_type=edit_type
+              file_path=event.src_path, edit_type=edit_type
           )
       )
       with self._pending_events_lock:
@@ -161,6 +170,7 @@ class ClearcutEventHandler(PatternMatchingEventHandler):
           user_name=self.user_name,
           host_name=self.host_name,
           source_root=self.source_root,
+          target_repo=self.target_repo,
       )
       aggregated_event_proto.aggregated_edit_event.CopyFrom(
           edit_event_pb2.EditEvent.AggregatedEditEvent(
@@ -186,6 +196,8 @@ class ClearcutEventHandler(PatternMatchingEventHandler):
 def start(
     path: str,
     is_dry_run: bool = False,
+    target_repo: str = 'android',
+    ignore_patterns: list[str] | None = None,
     flush_interval_sec: int = DEFAULT_FLUSH_INTERVAL_SECONDS,
     single_events_size_threshold: int = DEFAULT_SINGLE_EVENTS_SIZE_THRESHOLD,
     cclient: clearcut_client.Clearcut | None = None,
@@ -207,8 +219,14 @@ def start(
       single_events_size_threshold,
       is_dry_run,
       cclient,
+      target_repo,
+      ignore_patterns=ignore_patterns,
   )
   observer = Observer()
+
+  if target_repo == 'chrome':
+    logging.info("Starting observer on path %s for chrome.", path)
+    observer.schedule(event_handler, path, recursive=False)
 
   out_dir = os.environ.get("OUT_DIR", "out")
   sub_dirs = [

@@ -1,0 +1,10 @@
+package: "com.android.aconfig.diff.test.rw"
+container: "system"
+
+flag {
+    name: "test_flag"
+    namespace: "aconfig_diff"
+    description: "A read-write flag"
+    bug: "12345678"
+    is_fixed_read_only: false
+}

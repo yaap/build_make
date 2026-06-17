@@ -59,14 +59,6 @@ PRODUCT_PACKAGES += libfwdlockengine
 # System libraries commonly depended on by things on the system_ext or product partitions.
 # These lists will be pruned periodically.
 PRODUCT_PACKAGES += \
-    android.hardware.biometrics.fingerprint@2.1 \
-    android.hardware.radio@1.0 \
-    android.hardware.radio@1.1 \
-    android.hardware.radio@1.2 \
-    android.hardware.radio@1.3 \
-    android.hardware.radio@1.4 \
-    android.hardware.radio.config@1.0 \
-    android.hardware.radio.deprecated@1.0 \
     android.hardware.secure_element@1.0 \
     libaudio-resampler \
     libaudiohal \
@@ -129,10 +121,10 @@ PRODUCT_BRAND := generic
 
 # Define /system partition-specific product properties to identify that /system
 # partition is generic_system.
-PRODUCT_SYSTEM_NAME := mainline
+PRODUCT_SYSTEM_NAME := generic_system
 PRODUCT_SYSTEM_BRAND := Android
 PRODUCT_SYSTEM_MANUFACTURER := Android
-PRODUCT_SYSTEM_MODEL := mainline
+PRODUCT_SYSTEM_MODEL := Generic System
 PRODUCT_SYSTEM_DEVICE := generic
 
 _base_mk_allowed_list :=

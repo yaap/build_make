@@ -37,6 +37,7 @@ mod auto_generated {
     pub use aconfig_rust_proto::aconfig::Flag_metadata as ProtoFlagMetadata;
     pub use aconfig_rust_proto::aconfig::Flag_permission as ProtoFlagPermission;
     pub use aconfig_rust_proto::aconfig::Flag_state as ProtoFlagState;
+    pub use aconfig_rust_proto::aconfig::Flag_type as ProtoFlagType;
     pub use aconfig_rust_proto::aconfig::Flag_value as ProtoFlagValue;
     pub use aconfig_rust_proto::aconfig::Flag_values as ProtoFlagValues;
     pub use aconfig_rust_proto::aconfig::Parsed_flag as ProtoParsedFlag;
@@ -58,6 +59,7 @@ mod auto_generated {
     pub use aconfig::Flag_metadata as ProtoFlagMetadata;
     pub use aconfig::Flag_permission as ProtoFlagPermission;
     pub use aconfig::Flag_state as ProtoFlagState;
+    pub use aconfig::Flag_type as ProtoFlagType;
     pub use aconfig::Flag_value as ProtoFlagValue;
     pub use aconfig::Flag_values as ProtoFlagValues;
     pub use aconfig::Parsed_flag as ProtoParsedFlag;
@@ -148,6 +150,13 @@ pub mod flag_declaration {
             !pdf.metadata.has_storage(),
             "bad flag declaration: storage in metadata should not be explicitly selected"
         );
+
+        if cfg!(not(enable_int_flag)) {
+            ensure!(
+                pdf.type_() != ProtoFlagType::FLAG_TYPE_INTEGER,
+                "bad flag declaration: int flag usage is not enabled"
+            );
+        }
 
         Ok(())
     }
@@ -525,7 +534,8 @@ flag {
 "#,
         )
         .unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad flag declarations: missing package");
+        assert_eq!(error.to_string(), "bad flag declarations: missing package");
+        assert!(format!("{error:?}").contains("bad flag declarations: missing package"));
 
         // bad input: missing namespace in flag declaration
         let error = flag_declarations::try_from_text_proto(
@@ -544,7 +554,8 @@ flag {
 "#,
         )
         .unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad flag declaration: missing namespace");
+        assert_eq!(error.to_string(), "bad flag declaration: missing namespace");
+        assert!(format!("{error:?}").contains("bad flag declaration: missing namespace"));
 
         // bad input: bad package name in flag declarations
         let error = flag_declarations::try_from_text_proto(
@@ -661,6 +672,53 @@ flag {
     }
 
     #[test]
+    #[cfg(not(enable_int_flag))]
+    // this test tests when int flag is not enabled.
+    fn test_flag_declarations_try_from_text_proto_int_flag_disabled() {
+        // bad input: use flag int when disabled
+        let error = flag_declarations::try_from_text_proto(
+            r#"
+package: "com.foo.bar"
+container: "system"
+flag {
+    name: "int_flag"
+    namespace: "int_flag_ns"
+    description: "This is the description of the int flag."
+    bug: "123"
+    is_exported: true
+    type: FLAG_TYPE_INTEGER
+}
+"#,
+        )
+        .unwrap_err();
+        assert!(
+            format!("{error:?}").contains("bad flag declaration: int flag usage is not enabled")
+        );
+    }
+
+    #[test]
+    #[cfg(enable_int_flag)]
+    // this test tests when int type flag can be specified when flag to guard it is enabled.
+    fn test_flag_declarations_try_from_text_proto_int_flag_enabled() {
+        // valid input: int type flag when flag to guard it is enabled
+        let flag_declarations = flag_declarations::try_from_text_proto(
+            r#"
+flag {
+    name: "int_flag"
+    namespace: "int_flag_ns"
+    description: "This is the description of the int flag."
+    bug: "123"
+    is_exported: true
+    type: FLAG_TYPE_INTEGER
+}
+"#,
+        )
+        .unwrap();
+        let flag_declaration = flag_declarations.flag.iter()[0].unwrap();
+        assert_eq!(flag_declaration.type_(), ProtoFlagType::FLAG_TYPE_INTEGER);
+    }
+
+    #[test]
     fn test_flag_values_try_from_text_proto() {
         // valid input
         let flag_values = flag_values::try_from_text_proto(
@@ -730,7 +788,8 @@ flag_value {
 "#,
         )
         .unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad flag value: missing state");
+        assert_eq!(error.to_string(), "bad flag value: missing state");
+        assert!(format!("{error:?}").contains("bad flag value: missing state"));
 
         // bad input: missing permission in flag value
         let error = flag_values::try_from_text_proto(
@@ -743,7 +802,8 @@ flag_value {
 "#,
         )
         .unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad flag value: missing permission");
+        assert_eq!(error.to_string(), "bad flag value: missing permission");
+        assert!(format!("{error:?}").contains("bad flag value: missing permission"));
     }
 
     fn try_from_binary_proto_from_text_proto(text_proto: &str) -> Result<ProtoParsedFlags> {
@@ -838,7 +898,8 @@ parsed_flag {
 }
 "#;
         let error = try_from_binary_proto_from_text_proto(text_proto).unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad parsed flag: empty trace");
+        assert_eq!(error.to_string(), "bad parsed flag: empty trace");
+        assert!(format!("{error:?}").contains("bad parsed flag: empty trace"));
 
         // bad input: missing namespace in parsed_flag
         let text_proto = r#"
@@ -857,7 +918,8 @@ parsed_flag {
 }
 "#;
         let error = try_from_binary_proto_from_text_proto(text_proto).unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad parsed flag: missing namespace");
+        assert_eq!(error.to_string(), "bad parsed flag: missing namespace");
+        assert!(format!("{error:?}").contains("bad parsed flag: missing namespace"));
 
         // bad input: parsed_flag not sorted by package
         let text_proto = r#"
@@ -900,9 +962,11 @@ parsed_flag {
 "#;
         let error = try_from_binary_proto_from_text_proto(text_proto).unwrap_err();
         assert_eq!(
-            format!("{error:?}"),
+            error.to_string(),
             "bad parsed flags: not sorted: bbb.bbb.first comes before aaa.aaa.second"
         );
+        assert!(format!("{error:?}")
+            .contains("bad parsed flags: not sorted: bbb.bbb.first comes before aaa.aaa.second"));
 
         // bad input: parsed_flag not sorted by name
         let text_proto = r#"
@@ -945,9 +1009,11 @@ parsed_flag {
 "#;
         let error = try_from_binary_proto_from_text_proto(text_proto).unwrap_err();
         assert_eq!(
-            format!("{error:?}"),
+            error.to_string(),
             "bad parsed flags: not sorted: com.foo.bbb comes before com.foo.aaa"
         );
+        assert!(format!("{error:?}")
+            .contains("bad parsed flags: not sorted: com.foo.bbb comes before com.foo.aaa"));
 
         // bad input: duplicate flags
         let text_proto = r#"
@@ -989,7 +1055,8 @@ parsed_flag {
 }
 "#;
         let error = try_from_binary_proto_from_text_proto(text_proto).unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad parsed flags: duplicate flag com.foo.bar (defined in flags.declarations and flags.declarations)");
+        assert_eq!(error.to_string(), "bad parsed flags: duplicate flag com.foo.bar (defined in flags.declarations and flags.declarations)");
+        assert!(format!("{error:?}").contains("bad parsed flags: duplicate flag com.foo.bar (defined in flags.declarations and flags.declarations)"));
 
         // bad input: wrong storage backend: not NONE
         let text_proto = r#"
@@ -1014,9 +1081,11 @@ parsed_flag {
 "#;
         let error = try_from_binary_proto_from_text_proto(text_proto).unwrap_err();
         assert_eq!(
-            format!("{error:?}"),
+            error.to_string(),
             "bad parsed flag: storage backend is not NONE for a read only flag"
         );
+        assert!(format!("{error:?}")
+            .contains("bad parsed flag: storage backend is not NONE for a read only flag"));
 
         // bad input: wrong storage backend UNSPECIFIED
         let text_proto = r#"
@@ -1040,7 +1109,10 @@ parsed_flag {
 }
 "#;
         let error = try_from_binary_proto_from_text_proto(text_proto).unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad parsed flag: storage backend cannot be UNSPECIFIED");
+        assert_eq!(error.to_string(), "bad parsed flag: storage backend cannot be UNSPECIFIED");
+        assert!(
+            format!("{error:?}").contains("bad parsed flag: storage backend cannot be UNSPECIFIED")
+        );
     }
 
     #[test]
@@ -1186,17 +1258,20 @@ parsed_flag {
 
         // two of the same flag with dedup disabled
         let error = parsed_flags::merge(vec![first.clone(), first.clone()], false).unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad parsed flags: duplicate flag com.first.first (defined in flags.declarations and flags.declarations)");
+        assert_eq!(error.to_string(), "bad parsed flags: duplicate flag com.first.first (defined in flags.declarations and flags.declarations)");
+        assert!(format!("{error:?}").contains("bad parsed flags: duplicate flag com.first.first (defined in flags.declarations and flags.declarations)"));
 
         // two conflicting flags with dedup disabled
         let error =
             parsed_flags::merge(vec![second.clone(), second_duplicate.clone()], false).unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad parsed flags: duplicate flag com.second.second (defined in flags.declarations and duplicate/flags.declarations)");
+        assert_eq!(error.to_string(), "bad parsed flags: duplicate flag com.second.second (defined in flags.declarations and duplicate/flags.declarations)");
+        assert!(format!("{error:?}").contains("bad parsed flags: duplicate flag com.second.second (defined in flags.declarations and duplicate/flags.declarations)"));
 
         // two conflicting flags with dedup enabled
         let error =
             parsed_flags::merge(vec![second.clone(), second_duplicate.clone()], true).unwrap_err();
-        assert_eq!(format!("{error:?}"), "bad parsed flags: duplicate flag com.second.second (defined in flags.declarations and duplicate/flags.declarations)");
+        assert_eq!(error.to_string(), "bad parsed flags: duplicate flag com.second.second (defined in flags.declarations and duplicate/flags.declarations)");
+        assert!(format!("{error:?}").contains("bad parsed flags: duplicate flag com.second.second (defined in flags.declarations and duplicate/flags.declarations)"));
 
         // valid cases
         assert!(parsed_flags::merge(vec![], false).unwrap().parsed_flag.is_empty());

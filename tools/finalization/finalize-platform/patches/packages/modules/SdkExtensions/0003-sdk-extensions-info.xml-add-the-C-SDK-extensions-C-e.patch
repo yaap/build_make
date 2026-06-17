@@ -1,0 +1,486 @@
+From 3077120db7c34c86f3bf124caf3890c653eba6c6 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 19 Feb 2026 20:05:00 +0000
+Subject: [PATCH 3/3] sdk-extensions-info.xml: add the C SDK extensions (C-ext)
+
+Introduce the <sdk> tag for the C SDK extensions, update existing
+symbols.
+
+Also replace B-ext with C-ext for some of the Conscrypt symbols that
+will target C-ext but used B-ext as a placeholder until C-ext was
+available.
+
+Also update references to "conscrypt.module.public.api" to be
+"conscrypt": this jar and an ART jar are renamed when SDKs are unpacked
+to prebuilts/sdk (for legacy reasons). See unpack-platform-sdk for
+details.
+
+Bug: 397646538
+Bug: 480974361
+Test: atest sdk-extensions-info-test
+Flag: NONE platform SDK finalization
+Change-Id: I6b7f5fdf42f3f4cc725463db36623bf6bda89d12
+---
+ sdk-extensions-info.xml | 177 ++++++++++++++++++++--------------------
+ 1 file changed, 89 insertions(+), 88 deletions(-)
+
+diff --git a/sdk-extensions-info.xml b/sdk-extensions-info.xml
+index 37351f9d397..bea2f3029c1 100644
+--- a/sdk-extensions-info.xml
++++ b/sdk-extensions-info.xml
+@@ -51,6 +51,11 @@
+       shortname="B-ext"
+       name="B Extensions"
+       reference="android/os/Build$VERSION_CODES$BAKLAVA" />
++  <sdk
++      id="37"
++      shortname="C-ext"
++      name="C Extensions"
++      reference="android/os/Build$VERSION_CODES$CINNAMON_BUN" />
+   <sdk
+     id="1000000"
+     shortname="AD_SERVICES-ext"
+@@ -61,75 +66,75 @@
+   <symbol
+     jar="framework-sdkextensions"
+     pattern="*"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+ 
+   <!-- APPSEARCH -->
+   <symbol
+     jar="framework-appsearch"
+     pattern="android.app.appsearch"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+ 
+   <!-- MEDIA_PROVIDER -->
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.PickerMediaColumns"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.ACTION_PICK_IMAGES"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.ACTION_PICK_IMAGES_SETTINGS"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.EXTRA_PICK_IMAGES_MAX"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.EXTRA_PICK_IMAGES_IN_ORDER"
+-      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.EXTRA_PICK_IMAGES_LAUNCH_TAB"
+-      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.EXTRA_PICK_IMAGES_ACCENT_COLOR"
+-      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.EXTRA_PICKER_PRE_SELECTION_URIS"
+-      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++      sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.QUERY_ARG_LATEST_SELECTION_ONLY"
+-      sdks="U-ext,V-ext,B-ext" />
++      sdks="U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.EXTRA_PICK_IMAGES_HIGHLIGHT_MEDIA"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.KEY_PICK_IMAGES_HIGHLIGHT_MEDIA_TEXT_QUERY"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.KEY_PICK_IMAGES_HIGHLIGHT_TYPE"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.PICK_IMAGES_HIGHLIGHT_TYPE_COLLAPSED"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.PICK_IMAGES_HIGHLIGHT_TYPE_EXPANDED"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.PICK_IMAGES_HIGHLIGHT_ALBUM_FAVORITES"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.PICK_IMAGES_HIGHLIGHT_ALBUM_CAMERA"
+@@ -137,243 +142,239 @@
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.PICK_IMAGES_HIGHLIGHT_ALBUM_SCREENSHOTS"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.PICK_IMAGES_HIGHLIGHT_ALBUM_VIDEOS"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+       jar="framework-mediaprovider"
+       pattern="android.provider.MediaStore.PICK_IMAGES_HIGHLIGHT_ALBUM_DOWNLOADS"
+-      sdks="T-ext,U-ext,V-ext,B-ext" />
++      sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.getPickImagesMaxLimit"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.getGeneration"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.getVersion"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.openFileDescriptor"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.openAssetFileDescriptor"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.openTypedAssetFileDescriptor"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.ACCESS_OEM_METADATA_PERMISSION"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.UPDATE_OEM_METADATA_PERMISSION"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.QUERY_ARG_MEDIA_STANDARD_SORT_ORDER"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.markIsFavoriteStatus"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.VOLUME_EXTERNAL"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.MediaColumns.INFERRED_DATE"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.MediaColumns.OEM_METADATA"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.Audio.AudioColumns.BITS_PER_SAMPLE"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.Audio.AudioColumns.SAMPLERATE"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.OemMetadataService"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.bulkUpdateOemMetadataInNextScan"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.CloudMediaProvider"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.CloudMediaProviderContract"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.isCurrentCloudMediaProviderAuthority"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.isSupportedCloudMediaProviderAuthority"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.notifyCloudMediaChangedEvent"
+-    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="R-ext,S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.Files.FileColumns.SPECIAL_FORMAT"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext"/>
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext"/>
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.Files.FileColumns.SPECIAL_FORMAT_NONE"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext"/>
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext"/>
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.Files.FileColumns.SPECIAL_FORMAT_GIF"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext"/>
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext"/>
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.Files.FileColumns.SPECIAL_FORMAT_MOTION_PHOTO"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext"/>
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext"/>
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.Files.FileColumns.SPECIAL_FORMAT_ANIMATED_WEBP"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext"/>
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext"/>
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.mediaprocessingservice.EmbeddingVector"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.mediaprocessingservice.EmbeddingVectorSerializer"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.mediaprocessingservice.ErrorMessage"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.mediaprocessingservice.MediaProcessingRequest"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.mediaprocessingservice.MediaProcessingResponse"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.mediaprocessingservice.QueryProcessingResponse"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.mediaprocessingservice.MediaProcessingService"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.SearchMediaException"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.SearchMediaResult"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.SearchMediaResultPage"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.SearchMediaService"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.getPackageForSearchMediaService"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.trashFile"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-mediaprovider"
+     pattern="android.provider.MediaStore.restoreFileFromTrash"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+ 
+    <!-- PHOTOPICKER -->
+    <symbol
+     jar="framework-photopicker"
+     pattern="android.widget.photopicker"
+-    sdks="U-ext,V-ext,B-ext" />
++    sdks="U-ext,V-ext,B-ext,C-ext" />
+ 
+   <!-- CONNECTIVITY -->
+   <symbol
+     jar="framework-connectivity"
+     pattern="android.net.http"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-connectivity-t"
+     pattern="android.net.nsd"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-connectivity-t"
+     pattern="android.net.thread"
+-    sdks="U-ext,V-ext,B-ext" />
++    sdks="U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-connectivity"
+     pattern="android.net.DnsResolver"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-connectivity"
+     pattern="android.net.dns"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-connectivity"
+     pattern="android.net"
+-    sdks="U-ext,V-ext,B-ext" />
++    sdks="U-ext,V-ext,B-ext,C-ext" />
+   <symbol
+     jar="framework-connectivity-t"
+     pattern="android.net.NetworkStats"
+-    sdks="T-ext,U-ext,V-ext,B-ext" />
++    sdks="T-ext,U-ext,V-ext,B-ext,C-ext" />
+ 
+   <!-- CONSCRYPT -->
+-  <!--
+-    TODO(b/397646538): replace B-ext with C-ext once it is available.
+-    Reminder: do the same in the TODO at external/conscrypt/Android.bp
+-   -->
+   <symbol
+     jar="framework-conscrypt-nsc"
+     pattern="android.security"
+-    sdks="B-ext" />
++    sdks="C-ext" />
+   <symbol
+-    jar="conscrypt.module.public.api"
++    jar="conscrypt"
+     pattern="com.android.org.conscrypt"
+-    sdks="B-ext" />
++    sdks="C-ext" />
+   <symbol
+-    jar="conscrypt.module.public.api"
++    jar="conscrypt"
+     pattern="android.net.ssl"
+-    sdks="B-ext" />
++    sdks="C-ext" />
+   <symbol
+-    jar="conscrypt.module.public.api"
++    jar="conscrypt"
+     pattern="android.net.ssl.EchConfigList"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+ 
+   <!-- PDF -->
+   <symbol
+     jar="framework-pdf"
+     pattern="android.graphics.pdf"
+-    sdks="S-ext,T-ext,U-ext,V-ext,B-ext" />
++    sdks="S-ext,T-ext,U-ext,V-ext,B-ext,C-ext" />
+ 
+   <!-- AD_SERVICES -->
+   <!--
+@@ -397,36 +398,36 @@
+   <symbol
+     jar="framework-healthfitness"
+     pattern="android.health.connect"
+-    sdks="U-ext,V-ext,B-ext" />
++    sdks="U-ext,V-ext,B-ext,C-ext" />
+ 
+   <symbol
+     jar="framework-healthfitness"
+     pattern="android.health.connect.backuprestore"
+-    sdks="B-ext" />
++    sdks="B-ext,C-ext" />
+ 
+   <symbol
+     jar="framework-healthfitness"
+     pattern="android.health.connect.HealthConnectManager.canRestore"
+-    sdks="B-ext" />
++    sdks="B-ext,C-ext" />
+ 
+   <symbol
+     jar="framework-healthfitness"
+     pattern="android.health.connect.HealthConnectManager.getChangesForBackup"
+-    sdks="B-ext" />
++    sdks="B-ext,C-ext" />
+ 
+   <symbol
+     jar="framework-healthfitness"
+     pattern="android.health.connect.HealthConnectManager.getLatestMetadataForBackup"
+-    sdks="B-ext" />
++    sdks="B-ext,C-ext" />
+ 
+   <symbol
+     jar="framework-healthfitness"
+     pattern="android.health.connect.HealthConnectManager.restoreChanges"
+-    sdks="B-ext" />
++    sdks="B-ext,C-ext" />
+ 
+   <symbol
+     jar="framework-healthfitness"
+     pattern="android.health.connect.HealthConnectManager.restoreLatestMetadata"
+-    sdks="B-ext" />
++    sdks="B-ext,C-ext" />
+ 
+ </sdk-extensions-info>
+-- 
+2.53.0.345.g96ddfc5eaa-goog
+

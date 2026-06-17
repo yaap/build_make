@@ -12,7 +12,7 @@ function commit_step_0_changes() {
             repo start "'$repo_branch'" ;
             git add -A . ;
             git commit -m "Vendor API level $FINAL_BOARD_API_LEVEL is now frozen" \
-                       -m "Ignore-AOSP-First: VINTF $FINAL_BOARD_API_LEVEL Finalization
+                       -m "Flag: EXEMPT Finalization
 Bug: $FINAL_BUG_ID
 Test: build";
             repo upload '"$repo_upload_dry_run_arg"' --cbr --no-verify -o nokeycheck -t -y . ;

@@ -8,7 +8,7 @@ default = ["cargo"]
 cargo = []
 
 [dependencies]
-anyhow = "1.0.69"
+anyhow = { path = "../../../../../external/rust/android-crates-io/crates/anyhow" }
 memmap2 = "0.8.0"
 tempfile = "3.9.0"
 thiserror = "1.0.56"
@@ -17,3 +17,9 @@ aconfig_storage_read_api = { path = "../aconfig_storage_read_api" }
 
 [dev-dependencies]
 aconfig_storage_file = { path = "../aconfig_storage_file", features = ["test_utils"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    "cfg(enable_parse_v4)",
+]

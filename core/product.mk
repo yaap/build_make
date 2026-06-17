@@ -143,6 +143,7 @@ _product_list_vars += PRODUCT_DEFAULT_WIFI_CHANNELS
 _product_single_value_vars += PRODUCT_DEFAULT_DEV_CERTIFICATE
 _product_list_vars += PRODUCT_MAINLINE_SEPOLICY_DEV_CERTIFICATES
 _product_list_vars += PRODUCT_MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES
+_product_list_vars += PRODUCT_MAINLINE_NFC_SEPOLICY_DEV_CERTIFICATES
 _product_list_vars += PRODUCT_RESTRICT_VENDOR_FILES
 
 # The list of product-specific kernel header dirs
@@ -288,6 +289,15 @@ _product_single_value_vars += PRODUCT_COMPRESSED_APEX
 # Default fs type for APEX payload image (apex_payload.img)
 _product_single_value_vars += PRODUCT_DEFAULT_APEX_PAYLOAD_TYPE
 
+# Default compressor for EROFS APEX payload image (apex_payload.img)
+_product_single_value_vars += PRODUCT_DEFAULT_APEX_PAYLOAD_EROFS_COMPRESSOR
+
+# Default compress_hints for EROFS APEX payload image (apex_payload.img)
+_product_single_value_vars += PRODUCT_DEFAULT_APEX_PAYLOAD_EROFS_COMPRESS_HINTS
+
+# Default pcluster_size (bytes) for EROFS APEX payload image (apex_payload.img)
+_product_single_value_vars += PRODUCT_DEFAULT_APEX_PAYLOAD_EROFS_PCLUSTER_SIZE
+
 # VNDK version of product partition. It can be 'current' if the product
 # partitions uses PLATFORM_VNDK_VERSION.
 _product_single_value_vars += PRODUCT_PRODUCT_VNDK_VERSION
@@ -339,6 +349,8 @@ _product_single_value_vars += PRODUCT_HIDL_ENABLED
 # system.img), so devices need to install the package in a system-only OTA manner.
 _product_single_value_vars += PRODUCT_BUILD_GENERIC_OTA_PACKAGE
 
+# Whether any paths are excluded from being set XOM when ENABLE_XOM=true
+_product_list_vars += PRODUCT_XOM_EXCLUDE_PATHS
 _product_list_vars += PRODUCT_MANIFEST_PACKAGE_NAME_OVERRIDES
 _product_list_vars += PRODUCT_PACKAGE_NAME_OVERRIDES
 _product_list_vars += PRODUCT_CERTIFICATE_OVERRIDES
@@ -421,12 +433,6 @@ _product_single_value_vars += PRODUCT_AVF_REMOTE_ATTESTATION_DISABLED
 
 # If true, kernel with modules will be used for Microdroid VMs.
 _product_single_value_vars += PRODUCT_AVF_KERNEL_MODULES_ENABLED
-
-# If true, the memory controller will be force-enabled in the cgroup v2 hierarchy
-_product_single_value_vars += PRODUCT_MEMCG_V2_FORCE_ENABLED
-
-# If true, the cgroup v2 hierarchy will be split into apps/system subtrees
-_product_single_value_vars += PRODUCT_CGROUP_V2_SYS_APP_ISOLATION_ENABLED
 
 # If set, check treble labeling
 _product_single_value_vars += PRODUCT_ENFORCE_SELINUX_TREBLE_LABELING
@@ -511,6 +517,8 @@ _product_single_value_vars += PRODUCT_ANDROIDMK_ALLOWLIST_FILE
 # Setting PRODUCT_SOONG_ONLY will cause the build to default to --soong-only mode, and the main
 # kati invocation will not be run.
 _product_single_value_vars += PRODUCT_SOONG_ONLY
+# Setting PRODUCT_SOONG_INCREMENTAL_ANALYSIS will enable incremental analysis by default
+_product_single_value_vars +=  PRODUCT_SOONG_INCREMENTAL_ANALYSIS
 
 # To provide a symlink target for $(TARGET_ROOT_OUT)/bugreports instead of using the default location defined in system/core/rootdir/create_root_structure.mk
 _product_single_value_vars += PRODUCT_BUGREPORTS_SYMLINK_TARGET

@@ -69,8 +69,6 @@ endif
 
 $(call add_json_bool, DontUseVabcOta, $(filter true,$(BOARD_DONT_USE_VABC_OTA)))
 
-$(call add_json_bool, FullTreble, $(filter true,$(PRODUCT_FULL_TREBLE)))
-
 $(call add_json_bool, NoBionicPageSizeMacro, $(filter true,$(PRODUCT_NO_BIONIC_PAGE_SIZE_MACRO)))
 
 $(call add_json_bool, PropertySplitEnabled, $(filter true,$(BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED)))

@@ -17,6 +17,7 @@ rust_test_host {
     rustlibs: [
         "liball_release_configs_proto",
         "libprotobuf",
+        "libregex",
     ],
     test_suites: ["general-tests"],
 }

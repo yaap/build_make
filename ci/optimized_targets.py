@@ -390,16 +390,6 @@ class GeneralTestsOptimizer(OptimizedBuildTarget):
 
     return command
 
-  def _copy_lib_dirs(self, host_out: str):
-    if not host_out:
-      logging.info('Skip copying lib/ and lib64/ directory')
-    for dir in ['lib64', 'lib']:
-      testcases_lib_dir = pathlib.Path(os.path.join(host_out, 'testcases', dir))
-      lib_dir = pathlib.Path(os.path.join(host_out, dir))
-      if not testcases_lib_dir.exists() and lib_dir.exists():
-        logging.info('Copying %s to %s', lib_dir, testcases_lib_dir)
-        shutil.copytree(lib_dir, testcases_lib_dir)
-
   def _module_in_modules_to_build(self, path) -> bool:
     """True if the path has module in modules_to_build or has lib/ lib64/. """
     for module in self.modules_to_build:
@@ -430,21 +420,8 @@ class GeneralTestsOptimizer(OptimizedBuildTarget):
         ],
     )
 
-    self._copy_lib_dirs(soong_vars.get('HOST_OUT'))
-
-    host_shared_libs_per_module = dict()
     host_outputs = list()
 
-    # pattern used to identify symlinks to host shared libraries, e.g.,
-    # out/host/linux-x86/testcase/hello_world_test/x86/shared_libs/libc++.so
-    # - group(1): out/host/linux-x86/testcase/hello_world_test
-    # - group(2): x86/shared_libs/libc++.so
-    regex_shared_libs = re.compile(r'(^.*)/([x86|x86_64]+/[shared_libs]+/.*.so$)')
-
-    # real symlinks stored in the Build System.
-    # https://source.corp.google.com/h/googleplex-android/platform/superproject/main/+/main:build/soong/test_suites/test_suites.go?q=%22pathForPackaging(ctx,%20suiteConfig.name)%22&sq=android
-    soong_out = os.path.join(
-        soong_vars.get('OUT_DIR'), 'soong', 'packaging', 'general-tests')
     if java_coverage_enabled():
       general_tests_jacoco_out = os.path.join(
           soong_vars.get('OUT_DIR'), 'soong', 'packaging', 'general-tests_jacoco_report_classes.jar')
@@ -456,31 +433,8 @@ class GeneralTestsOptimizer(OptimizedBuildTarget):
 
       if not self._module_in_modules_to_build(file_path.strip()):
         continue
-
       if pathlib.Path(file_path.strip()).exists():
-        # 3 kinds of paths would be added, e.g.,
-        # out/host/linux-x86/testcase/hello_world_test/hello_world_test
-        # out/host/linux-x86/testcase/lib/libc++.so
-        # out/host/linux-x86/testcase/lib64/libc++.so
         host_outputs.append(file_path)
-      else:
-        # for the in-existing paths, paths to shared_libs are needed, e,g,
-        # out/host/linux-x86/testcase/hello_world_test/x86/shared_libs/libc++.so
-        # out/host/linux-x86/testcase/hello_world_test/x86_64/shared_libs/libc++.so
-        match = regex_shared_libs.match(file_path.strip())
-        if match:
-          key = match.group(1).replace(soong_vars.get('HOST_OUT'), 'host')
-
-          # convert the symlink path to the real packaging path in Soong, e.g.,
-          # out/host/linux-x86/testcase/hello_world_test/x86/shared_libs/libc++.so
-          # is a symbolic link, and the real path in Soong is stored in
-          # out/soong/packaging/general-tests/x86/shared_libs/libc.so
-          symlink_path = os.path.join(soong_out, match.group(2))
-
-          if key in host_shared_libs_per_module:
-            host_shared_libs_per_module[key].append(symlink_path)
-          else:
-            host_shared_libs_per_module[key] = [symlink_path]
 
     logging.info('host_outputs size: %d', len(host_outputs))
     host_manifest_files, host_module_with_manifest_files = self._get_manifest_files(host_outputs)
@@ -573,17 +527,6 @@ class GeneralTestsOptimizer(OptimizedBuildTarget):
             ],
         )
     )
-
-    # Add symlinks to host shared libs.
-    if host_shared_libs_per_module:
-      for key in host_shared_libs_per_module.keys():
-        zip_command.extend(
-            self._generate_zip_options_for_items(
-                prefix=key,
-                relative_root=soong_out,
-                files=host_shared_libs_per_module[key],
-            )
-        )
 
     zip_command.append('-sha256')
 

@@ -206,15 +206,18 @@ def Snapshot(filename):
     return FileSnapshot(filename, contents)
 
 
-def Clean():
-    """Remove the out directory."""
+def Clean(keep_regex="^$"):
+    """Remove the out directory, keeping |files|."""
     def remove_out():
+        keep_re = re.compile(keep_regex)
         out_dir = utils.get_out_dir()
         #only remove actual contents, in case out is a symlink (as is the case for cog)
         if os.path.exists(out_dir):
           for filename in os.listdir(out_dir):
               p = os.path.join(out_dir, filename)
-              if os.path.isfile(p) or os.path.islink(p):
+              if keep_re.search(filename):
+                  continue
+              elif os.path.isfile(p) or os.path.islink(p):
                   os.remove(p)
               elif os.path.isdir(p):
                   shutil.rmtree(p)
@@ -418,9 +421,7 @@ class Runner():
                 return
         try:
 
-            extra_env = {
-                    "SOONG_HONOR_USE_PARTIAL_COMPILE": "true",
-            }
+            extra_env = {}
             # Measured build
             ns = self._run_build(lunch, benchmark_log_dir.joinpath("measured"), benchmark, extra_env)
             report.duration_ns = ns
@@ -752,6 +753,13 @@ benchmarks:
                       preroll=0,
                       postroll=3,
                       ),
+            Benchmark(id="full_using_logs",
+                      title="Full build using prior logs",
+                      change=Clean(r"^(\.)?(ninja_(log|deps)|siso.*)$"),
+                      modules=["droid"],
+                      preroll=1,
+                      postroll=3,
+                      ),
             Benchmark(id="nochange",
                       title="No change",
                       change=NoChange(),
@@ -904,7 +912,7 @@ benchmarks:
                       ),
             Benchmark(id="systemui_pod_api",
                       title="Add an API to a SystemUI pod",
-                      change=Modify("frameworks/base/packages/SystemUI/pods/src/com/android/systemui/util/time/SystemClock.java",
+                      change=Modify("frameworks/base/packages/SystemUI/pods/util/time/src/api/com/android/systemui/util/time/SystemClock.java",
                                     lambda: f'default long benchmarkMillis() {{ return 0; }}\n',
                                     before="long uptimeMillis();"),
                       modules=["SystemUI-application"],
@@ -913,7 +921,7 @@ benchmarks:
                       ),
             Benchmark(id="systemui_pod_impl",
                       title="Modify an internal implementation of a SystemUI pod",
-                      change=Modify("frameworks/base/packages/SystemUI/pods/src/com/android/systemui/util/time/impl/SystemClockImpl.java",
+                      change=Modify("frameworks/base/packages/SystemUI/pods/util/time/src/main/com/android/systemui/util/time/SystemClockImpl.java",
                                     lambda: f'android.util.Log.v("SystemClockImpl", "BENCHMARK = {random.randint(0, 1000000)}");\n',
                                     before="return android.os.SystemClock.uptimeMillis();"),
                       modules=["SystemUI-application"],

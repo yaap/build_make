@@ -16,13 +16,16 @@
 
 //! `aconfig-storage` is a debugging tool to parse storage files
 
+use aconfig_storage_file::test_utils::{
+    create_test_flag_info_list, create_test_flag_table, create_test_flag_value_list,
+    create_test_package_table,
+};
 use aconfig_storage_file::{
     list_flags, list_flags_with_info, read_file_to_bytes, AconfigStorageError, FlagInfoList,
     FlagTable, FlagValueList, PackageTable, StorageFileType, MAX_SUPPORTED_FILE_VERSION,
 };
 use clap::{builder::ArgAction, Arg, Command};
 use serde::Serialize;
-use serde_json;
 use std::fmt;
 use std::fs;
 use std::fs::File;
@@ -42,6 +45,9 @@ use std::io::Write;
  * $ aconfig-storage print --file=path/to/flag.map --type=flag_map --format=json > flag_map.json
  * $ vim flag_map.json // Manually make updates
  * $ aconfig-storage write-bytes --input-file=flag_map.json --output-file=path/to/flag.map --type=flag_map
+ *
+ * Generate test data:
+ * $ aconfig-storage generate-test-data --out-dir=path/to/out --version=4
  */
 fn cli() -> Command {
     Command::new("aconfig-storage")
@@ -108,6 +114,16 @@ fn cli() -> Command {
                         .value_parser(|s: &str| s.parse::<u32>()),
                 ),
         )
+        .subcommand(
+            Command::new("generate-test-data")
+                .arg(Arg::new("out-dir").long("out-dir").required(true).action(ArgAction::Set))
+                .arg(
+                    Arg::new("version")
+                        .long("version")
+                        .required(true)
+                        .value_parser(|s: &str| s.parse::<u32>()),
+                ),
+        )
 }
 
 fn print_storage_file(
@@ -144,7 +160,7 @@ where
     if as_json {
         serde_json::to_string(&file_contents).unwrap()
     } else {
-        format!("{:?}", file_contents)
+        format!("{file_contents:?}")
     }
 }
 
@@ -192,25 +208,24 @@ fn main() -> Result<(), AconfigStorageError> {
             let input_json = fs::read_to_string(input_file_path).unwrap();
 
             let file_type = sub_matches.get_one::<StorageFileType>("type").unwrap();
-            let output_bytes: Vec<u8>;
-            match file_type {
+            let output_bytes: Vec<u8> = match file_type {
                 StorageFileType::FlagVal => {
                     let list: FlagValueList = serde_json::from_str(&input_json).unwrap();
-                    output_bytes = list.into_bytes();
+                    list.into_bytes()
                 }
                 StorageFileType::FlagInfo => {
                     let list: FlagInfoList = serde_json::from_str(&input_json).unwrap();
-                    output_bytes = list.into_bytes();
+                    list.into_bytes()
                 }
                 StorageFileType::FlagMap => {
                     let table: FlagTable = serde_json::from_str(&input_json).unwrap();
-                    output_bytes = table.into_bytes();
+                    table.into_bytes()
                 }
                 StorageFileType::PackageMap => {
                     let table: PackageTable = serde_json::from_str(&input_json).unwrap();
-                    output_bytes = table.into_bytes();
+                    table.into_bytes()
                 }
-            }
+            };
 
             let output_file_path = sub_matches.get_one::<String>("output-file").unwrap();
             let file = File::create(output_file_path);
@@ -222,13 +237,11 @@ fn main() -> Result<(), AconfigStorageError> {
         // Reads in bytes, updates the version code, and writes out the bytes.
         // Use the json if there are any changes to the file for this version.
         // Intended to update the version code of files not affected by the
-        // version change.
-        // In other words, this is meant for host-side use to set up files for
-        // testing only.
+        // version change for testing.
         Some(("update-version", sub_matches)) => {
             let version = sub_matches.get_one::<u32>("version").unwrap();
             if *version > MAX_SUPPORTED_FILE_VERSION {
-                panic!("version {} is not supported", version);
+                panic!("version {version} is not supported");
             }
             let file_path = sub_matches.get_one::<String>("file").unwrap();
             let bytes = read_file_to_bytes(file_path)?;
@@ -263,6 +276,46 @@ fn main() -> Result<(), AconfigStorageError> {
                 panic!("can't make file");
             }
             let _ = file.unwrap().write_all(&output_bytes);
+        }
+        Some(("generate-test-data", sub_matches)) => {
+            let version = sub_matches.get_one::<u32>("version").unwrap();
+            if *version > MAX_SUPPORTED_FILE_VERSION {
+                panic!("version {version} is not supported");
+            }
+
+            let out_dir = sub_matches.get_one::<String>("out-dir").unwrap();
+
+            let pkg_bytes = create_test_package_table(*version).into_bytes();
+            let pkg_path = format!("{}/package_v{}.map", out_dir, version);
+            let pkg_file = File::create(&pkg_path);
+            if pkg_file.is_err() {
+                panic!("can't make file {}", pkg_path);
+            }
+            let _ = pkg_file.unwrap().write_all(&pkg_bytes);
+
+            let flag_bytes = create_test_flag_table(*version).into_bytes();
+            let flag_path = format!("{}/flag_v{}.map", out_dir, version);
+            let flag_file = File::create(&flag_path);
+            if flag_file.is_err() {
+                panic!("can't make file {}", flag_path);
+            }
+            let _ = flag_file.unwrap().write_all(&flag_bytes);
+
+            let val_bytes = create_test_flag_value_list(*version).into_bytes();
+            let val_path = format!("{}/flag_v{}.val", out_dir, version);
+            let val_file = File::create(&val_path);
+            if val_file.is_err() {
+                panic!("can't make file {}", val_path);
+            }
+            let _ = val_file.unwrap().write_all(&val_bytes);
+
+            let info_bytes = create_test_flag_info_list(*version).into_bytes();
+            let info_path = format!("{}/flag_v{}.info", out_dir, version);
+            let info_file = File::create(&info_path);
+            if info_file.is_err() {
+                panic!("can't make file {}", info_path);
+            }
+            let _ = info_file.unwrap().write_all(&info_bytes);
         }
         _ => unreachable!(),
     }

@@ -61,6 +61,24 @@ pub fn set_boolean_flag_value(
     })
 }
 
+/// Set int flag value thru mapped file and flush the change to file
+///
+/// \input mapped_file: the mapped flag value file
+/// \input index: flag index
+/// \input value: updated flag value
+/// \return a result of ()
+///
+pub fn set_int64_flag_value(
+    file: &mut MmapMut,
+    index: u32,
+    value: i64,
+) -> Result<(), AconfigStorageError> {
+    crate::flag_value_update::update_int64_flag_value(file, index, value)?;
+    file.flush().map_err(|errmsg| {
+        AconfigStorageError::MapFlushFail(anyhow!("fail to flush storage file: {}", errmsg))
+    })
+}
+
 /// Set if flag is has server override thru mapped file and flush the change to file
 ///
 /// \input mapped_file: the mapped flag info file
@@ -110,7 +128,7 @@ mod tests {
     use std::io::Read;
 
     fn get_boolean_flag_value_at_offset(file: &str, offset: u32) -> bool {
-        let mut f = File::open(&file).unwrap();
+        let mut f = File::open(file).unwrap();
         let mut bytes = Vec::new();
         f.read_to_end(&mut bytes).unwrap();
         find_boolean_flag_value(&bytes, offset).unwrap()
@@ -129,17 +147,17 @@ mod tests {
             for i in 0..8 {
                 set_boolean_flag_value(&mut file, i, true).unwrap();
                 let value = get_boolean_flag_value_at_offset(&flag_value_path, i);
-                assert_eq!(value, true);
+                assert!(value);
 
                 set_boolean_flag_value(&mut file, i, false).unwrap();
                 let value = get_boolean_flag_value_at_offset(&flag_value_path, i);
-                assert_eq!(value, false);
+                assert!(!value);
             }
         }
     }
 
     fn get_flag_attribute_at_offset(file: &str, value_type: FlagValueType, offset: u32) -> u8 {
-        let mut f = File::open(&file).unwrap();
+        let mut f = File::open(file).unwrap();
         let mut bytes = Vec::new();
         f.read_to_end(&mut bytes).unwrap();
         find_flag_attribute(&bytes, value_type, offset).unwrap()

@@ -87,7 +87,7 @@ class FSVerityMetadataGenerator:
 
     # The signature is the last element in the tree
     last_line = out.splitlines()[-1]
-    m = re.search('(\d+):.*hl=\s*(\d+)\s*l=\s*(\d+)\s*.*OCTET STRING', last_line)
+    m = re.search(r'(\d+):.*hl=\s*(\d+)\s*l=\s*(\d+)\s*.*OCTET STRING', last_line)
     if not m:
       raise RuntimeError("Failed to parse asn1parse output: " + out)
     offset = int(m.group(1))

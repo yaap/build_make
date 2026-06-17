@@ -37,6 +37,11 @@ PRODUCT_VENDOR_PROPERTIES += ro.virtual_ab.batch_writes=true
 PRODUCT_VENDOR_PROPERTIES += ro.virtual_ab.io_uring.enabled?=true
 PRODUCT_VENDOR_PROPERTIES += ro.virtual_ab.compression.xor.enabled?=true
 
+ifneq (,$(RELEASE_VABC_UBLK_ENABLE_FLAG))
+# Optionally enable ublk based OTA, some devices can override these if needed
+# by setting it to false
+    PRODUCT_VENDOR_PROPERTIES += ro.virtual_ab.ublk.enabled?=true
+endif
 # Low memory device configurations. If memory usage and cpu utilization is
 # a bottleneck during OTA, the below configurations can be added to a
 # device's .mk file improve performance for low mem devices.

@@ -104,11 +104,7 @@ my_arflags :=
 ifeq ($(PATH_TO_CLANG_TIDY),)
   my_tidy_enabled := false
 else
-  # If LOCAL_TIDY is not defined, use global WITH_TIDY
   my_tidy_enabled := $(LOCAL_TIDY)
-  ifeq ($(my_tidy_enabled),)
-    my_tidy_enabled := $(WITH_TIDY)
-  endif
 endif
 
 # my_tidy_checks is empty if clang-tidy is disabled.
@@ -184,6 +180,37 @@ endif
 # TODO(b/145621474): Move this check into IInterface.h when clang-tidy no longer uses absolute paths.
 ifneq (,$(filter $(addsuffix %,$(ALLOWED_MANUAL_INTERFACE_PATHS)),$(LOCAL_PATH)))
   my_cflags += -DDO_NOT_CHECK_MANUAL_BINDER_INTERFACES
+endif
+
+XOM := RELEASE_BUILD_EXECUTE_ONLY_MEMORY
+ifdef ENABLE_XOM
+  XOM := ENABLE_XOM
+endif
+
+ifeq ($(strip $(XOM)),true)
+  ifndef LOCAL_IS_HOST_MODULE
+    my_xom := true
+    # Disable XOM in excluded paths.
+    combined_xom_exclude_paths := $(XOM_EXCLUDE_PATHS) \
+                                  $(PRODUCT_XOM_EXCLUDE_PATHS)
+    ifneq ($(strip $(foreach dir,$(subst $(comma),$(space),$(combined_xom_exclude_paths)),\
+           $(filter $(dir)%,$(LOCAL_PATH)))),)
+      my_xom := false
+    endif
+
+    # Allow LOCAL_XOM to override the above
+    ifdef LOCAL_XOM
+      my_xom := $(LOCAL_XOM)
+    endif
+
+    ifeq ($(strip $(my_xom)),true)
+      ifeq (arm64,$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH))
+        ifeq ($(my_use_clang_lld),true)
+          my_ldflags += -Wl,--execute-only -Wl,-z,separate-code -Wl,--rosegment
+        endif
+      endif
+    endif
+  endif
 endif
 
 my_allow_undefined_symbols := $(strip $(LOCAL_ALLOW_UNDEFINED_SYMBOLS))

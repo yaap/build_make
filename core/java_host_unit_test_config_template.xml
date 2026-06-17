@@ -30,6 +30,7 @@
         <option name="java-flags" value="--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED"/>
         <option name="java-flags" value="--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED"/>
         <option name="java-flags" value="--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED"/>
+        <option name="java-flags" value="--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED"/>
         <option name="java-flags" value="--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED"/>
         <option name="java-flags" value="--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"/>
     </test>

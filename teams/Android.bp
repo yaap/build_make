@@ -994,6 +994,13 @@ team {
 }
 
 team {
+    name: "trendy_team_wear_audio_framework",
+
+    // go/trendy/manage/engineers/5114199579459584
+    trendy_team_id: "5114199579459584",
+}
+
+team {
     name: "trendy_team_biometrics_framework",
 
     // go/trendy/manage/engineers/6205415425998848
@@ -2814,6 +2821,13 @@ team {
 }
 
 team {
+    name: "trendy_team_orchestration_frameworks",
+
+    // go/trendy/manage/engineers/5498119911243776
+    trendy_team_id: "5498119911243776",
+}
+
+team {
     name: "trendy_team_deprecated_framework_santoscordon",
 
     // go/trendy/manage/engineers/6049242537951232
@@ -4463,6 +4477,32 @@ team {
 
     // go/trendy/manage/engineers/6240132656365568
     trendy_team_id: "6240132656365568",
+}
+
+team {
+    name: "trendy_team_pixel_health",
+
+    // go/trendy/manage/engineers/6730550418440192
+    trendy_team_id: "6730550418440192",
+}
+
+team {
+    name: "trendy_team_network_security",
+    trendy_team_id: "6092250355695616",
+}
+
+team {
+    name: "trendy_team_desktop_input",
+
+    // go/trendy/manage/engineers/5175303292157952
+    trendy_team_id: "5175303292157952",
+}
+
+team {
+    name: "trendy_team_desktop_pnp",
+
+    // go/trendy/manage/engineers/4785329388486656
+    trendy_team_id: "4785329388486656",
 }
 
 // DON'T ADD NEW RULES HERE. For more details refer to

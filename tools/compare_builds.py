@@ -167,8 +167,8 @@ BUILD_INTERNALS_SUFFIX_SKIP = (
 )
 
 BUILD_INTERNALS_REGEX_SKIP = (
-    "/build_fingerprint-[^-/]*\.txt$",
-    "/build_thumbprint-[^-/]*\.txt$",
+    "/build(_system)?_fingerprint-[^-/]*\\.txt$",
+    "/build_thumbprint-[^-/]*\\.txt$",
 )
 
 
@@ -610,7 +610,7 @@ class OutFiles(FileIterator):
       if relative.endswith(skip):
         return False
     for skip in BUILD_INTERNALS_REGEX_SKIP:
-      if re.match(relative, skip):
+      if re.search(skip, relative):
         return False
     return True
 

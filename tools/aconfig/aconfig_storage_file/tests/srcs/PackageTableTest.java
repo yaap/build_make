@@ -19,7 +19,9 @@ package android.aconfig.storage.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 
+import android.aconfig.storage.AconfigStorageException;
 import android.aconfig.storage.FileType;
 import android.aconfig.storage.PackageTable;
 
@@ -27,6 +29,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -61,6 +65,21 @@ public class PackageTableTest {
         assertEquals(3, header.getNumPackages());
         assertEquals(31, header.getBucketOffset());
         assertEquals(59, header.getNodeOffset());
+    }
+
+    @Test
+    public void testPackageTable_badVersion() throws Exception {
+        // Note: we cannot set the bad version directly in the arg because TestDataUtils will also
+        // use that arg in the path to test data, and we need to make sure the path exists.
+        ByteBuffer byteBuffer = TestDataUtils.getTestPackageMapByteBuffer(1);
+        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        byteBuffer.putInt(0, 100); // version=100
+        PackageTable packageTable = PackageTable.fromBytes(byteBuffer);
+        assertThrows(
+                AconfigStorageException.class,
+                () -> {
+                    packageTable.get("com.android.aconfig.storage.test_1");
+                });
     }
 
     @Test

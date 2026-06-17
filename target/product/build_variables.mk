@@ -17,15 +17,6 @@
 # This file contains the trunk-stable flags that should be exported to all
 # Android targets.
 
-# Control libbinder client caching
-$(call soong_config_set, libbinder, release_libbinder_client_cache, $(RELEASE_LIBBINDER_CLIENT_CACHE))
-
-# Control caching while adding service in libbinder cache
-$(call soong_config_set, libbinder, release_libbinder_addservice_cache, $(RELEASE_LIBBINDER_ADDSERVICE_CACHE))
-
-# Remove static list in libbinder cache
-$(call soong_config_set, libbinder, release_libbinder_remove_cache_static_list, $(RELEASE_LIBBINDER_REMOVE_CACHE_STATIC_LIST))
-
 # Use the configured release of sqlite
 $(call soong_config_set, libsqlite3, release_package_libsqlite3, $(RELEASE_PACKAGE_LIBSQLITE3))
 

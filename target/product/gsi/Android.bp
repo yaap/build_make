@@ -107,6 +107,7 @@ android_filesystem_defaults {
 
         // telephony packages
         "CarrierConfig",
+        "preinstalled-packages-gsi-system-ext.xml",
 
         ///////////////////////////////////////////
         // gsi_release
@@ -136,6 +137,18 @@ android_filesystem_defaults {
         "messaging",
         "apns-full-conf.xml",
         "frameworks-base-overlays",
+        "preinstalled-packages-base-product.xml",
+
+        ///////////////////////////////////////////
+        // PRODUCT_PACKAGES_SHIPPING_API_LEVEL_33
+        ///////////////////////////////////////////
+        "wificond",
+
+        ///////////////////////////////////////////
+        // PRODUCT_PACKAGES_SHIPPING_API_LEVEL_34
+        ///////////////////////////////////////////
+        "hwservicemanager",
+        "android.hidl.allocator@1.0-service",
     ],
     multilib: {
         lib64: {
@@ -180,13 +193,14 @@ android_system_image {
     deps: [
         // handheld_system_ext
         "AccessibilityMenu",
+        "AvatarPicker",
         "WallpaperCropper",
 
         // telephony_system_ext
         "EmergencyInfo",
+        "preinstalled-packages-platform-telephony-system-ext.xml",
 
         // handheld_product
-        "AvatarPicker",
         "Calendar",
         "Contacts",
         "DeskClock",
@@ -200,6 +214,7 @@ android_system_image {
         // telephony_product
         "ImsServiceEntitlement",
         "preinstalled-packages-platform-telephony-product.xml",
+        "preinstalled-packages-telephony-system-ext.xml",
 
         // more AOSP packages
         "initial-package-stopped-states-aosp.xml",

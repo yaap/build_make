@@ -15,7 +15,8 @@
  */
 
 use aconfig_protos::{
-    ParsedFlagExt, ProtoFlagMetadata, ProtoFlagPermission, ProtoFlagState, ProtoTracepoint,
+    ParsedFlagExt, ProtoFlagMetadata, ProtoFlagPermission, ProtoFlagPurpose, ProtoFlagState,
+    ProtoFlagStorageBackend, ProtoTracepoint,
 };
 use aconfig_protos::{ProtoParsedFlag, ProtoParsedFlags};
 use anyhow::{anyhow, bail, Context, Result};
@@ -88,8 +89,12 @@ fn dump_custom_format(flag: &ProtoParsedFlag, format: &str, output: &mut Vec<u8>
         trace.iter().map(|tracepoint| tracepoint.source()).collect::<Vec<_>>().join(", ")
     }
 
-    fn format_metadata(metadata: &ProtoFlagMetadata) -> String {
+    fn format_metadata_purpose(metadata: &ProtoFlagMetadata) -> String {
         format!("{:?}", metadata.purpose())
+    }
+
+    fn format_metadata_storage(metadata: &ProtoFlagMetadata) -> String {
+        format!("{:?}", metadata.storage())
     }
 
     let mut str = format
@@ -107,7 +112,8 @@ fn dump_custom_format(flag: &ProtoParsedFlag, format: &str, output: &mut Vec<u8>
         .replace("{is_fixed_read_only}", &format!("{}", flag.is_fixed_read_only()))
         .replace("{is_exported}", &format!("{}", flag.is_exported()))
         .replace("{container}", flag.container())
-        .replace("{metadata}", &format_metadata(&flag.metadata))
+        .replace("{metadata.purpose}", &format_metadata_purpose(&flag.metadata))
+        .replace("{metadata.storage}", &format_metadata_storage(&flag.metadata))
         // ParsedFlagExt functions
         .replace("{fully_qualified_name}", &flag.fully_qualified_name());
     str.push('\n');
@@ -190,7 +196,31 @@ fn create_filter_predicate_single(filter: &str) -> Result<Box<DumpPredicate>> {
             let expected = arg.to_owned();
             Ok(Box::new(move |flag: &ProtoParsedFlag| flag.container() == expected))
         }
-        // metadata: not supported yet
+        "metadata.purpose" => {
+            let expected = enum_from_str(
+                &[
+                    ProtoFlagPurpose::PURPOSE_UNSPECIFIED,
+                    ProtoFlagPurpose::PURPOSE_FEATURE,
+                    ProtoFlagPurpose::PURPOSE_BUGFIX,
+                ],
+                arg,
+            )
+            .context(error_msg)?;
+            Ok(Box::new(move |flag: &ProtoParsedFlag| flag.metadata.purpose() == expected))
+        }
+        "metadata.storage" => {
+            let expected = enum_from_str(
+                &[
+                    ProtoFlagStorageBackend::UNSPECIFIED,
+                    ProtoFlagStorageBackend::ACONFIGD,
+                    ProtoFlagStorageBackend::DEVICE_CONFIG,
+                    ProtoFlagStorageBackend::NONE,
+                ],
+                arg,
+            )
+            .context(error_msg)?;
+            Ok(Box::new(move |flag: &ProtoParsedFlag| flag.metadata.storage() == expected))
+        }
         "fully_qualified_name" => {
             let expected = arg.to_owned();
             Ok(Box::new(move |flag: &ProtoParsedFlag| flag.fully_qualified_name() == expected))
@@ -294,7 +324,8 @@ mod tests {
         assert_custom_format!("{is_fixed_read_only}", "false\n");
         assert_custom_format!("{is_exported}", "false\n");
         assert_custom_format!("{container}", "system\n");
-        assert_custom_format!("{metadata}", "PURPOSE_BUGFIX\n");
+        assert_custom_format!("{metadata.purpose}", "PURPOSE_BUGFIX\n");
+        assert_custom_format!("{metadata.storage}", "NONE\n");
 
         assert_custom_format!("name={name}|state={state}", "name=enabled_ro|state=ENABLED\n");
         assert_custom_format!("{state}{state}{state}", "ENABLEDENABLEDENABLED\n");
@@ -404,7 +435,20 @@ mod tests {
                 "com.android.aconfig.test.enabled_rw",
             ]
         );
-        // metadata: not supported yet
+        assert_create_filter_predicate!(
+            "metadata.purpose:PURPOSE_BUGFIX",
+            &["com.android.aconfig.test.enabled_ro",]
+        );
+        assert_create_filter_predicate!(
+            "metadata.storage:NONE",
+            &[
+                "com.android.aconfig.test.disabled_ro",
+                "com.android.aconfig.test.enabled_fixed_ro",
+                "com.android.aconfig.test.enabled_fixed_ro_exported",
+                "com.android.aconfig.test.enabled_ro",
+                "com.android.aconfig.test.enabled_ro_exported"
+            ]
+        );
 
         // synthesized fields
         assert_create_filter_predicate!(

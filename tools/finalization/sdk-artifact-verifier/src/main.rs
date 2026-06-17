@@ -15,14 +15,13 @@
  */
 
 //! This module verifies the content of api-versions.xml and checks it for internal consistency.
-
 mod api_versions;
-use crate::api_versions::{load, Api};
+use crate::api_versions::{load, Api, MajorMinorVersion};
 use clap::Parser;
 use itertools::Itertools;
 use std::{fs, path::PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, ensure, Context, Result};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Parser, Debug)]
@@ -33,23 +32,41 @@ struct Args {
 
     #[arg(short, long)]
     deprecated_at_birth_allowlist_path: Option<PathBuf>,
+
+    #[arg(long)]
+    max_sdk_version_full: MajorMinorVersion,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let api = load(args.api_versions_path)?;
+    ensure!(
+        args.api_versions_path.exists(),
+        "api_versions_path does not exist: {:?}",
+        args.api_versions_path
+    );
 
-    // TODO Do this when parsing arguments and throw an informative exception if filename is wrong
+    if let Some(path) = &args.deprecated_at_birth_allowlist_path {
+        ensure!(path.exists(), "deprecated_at_birth_allowlist_path does not exist: {:?}", path);
+    }
+
+    let api = load(&args.api_versions_path).with_context(|| {
+        format!("Failed to load api versions from {:?}", args.api_versions_path)
+    })?;
+
     let allowlist: HashSet<String> = match &args.deprecated_at_birth_allowlist_path {
-        Some(path) => fs::read_to_string(path)?.lines().map(|line| line.to_string()).collect(),
+        Some(path) => fs::read_to_string(path)
+            .with_context(|| format!("Failed to read allowlist file at {:?}", path))?
+            .lines()
+            .map(|line| line.to_string())
+            .collect(),
         None => HashSet::new(),
     };
 
     let mut problems = Vec::<String>::new();
     problems.append(&mut no_deprecated_at_birth(&api, &allowlist));
     problems.append(&mut no_adservices_ext_crossover(&api));
-    problems.append(&mut no_deprecated_after_last_known(&api));
+    problems.append(&mut no_deprecated_after_last_known(&api, args.max_sdk_version_full));
 
     assert!(problems.is_empty(), "{}", problems.iter().join("\n"));
 
@@ -96,56 +113,72 @@ fn no_deprecated_at_birth(api: &Api, allowlist: &HashSet<String>) -> Vec<String>
     problems
 }
 
-fn no_deprecated_after_last_known(api: &Api) -> Vec<String> {
-    let problems = Vec::<String>::new();
+/// Checks if the provided optional version exceeds the maximum allowed SDK version.
+///
+/// Returns `Some(String)` with a formatted error message if the version is present and
+/// greater than `max_sdk_version`. Otherwise, returns `None`.
+fn check_version_msg(
+    version_opt: Option<MajorMinorVersion>,
+    max_sdk_version: MajorMinorVersion,
+    context: String,
+) -> Option<String> {
+    if let Some(version) = version_opt {
+        if version > max_sdk_version {
+            return Some(format!(
+                "{}: SDK version \"{}\" is greater than the maximum allowed \"{}\"",
+                context, version, max_sdk_version
+            ));
+        }
+    }
+    None
+}
+
+fn no_deprecated_after_last_known(api: &Api, max_sdk_version: MajorMinorVersion) -> Vec<String> {
+    let mut problems: Vec<String> = Vec::new();
 
     for class in api.classes.values() {
-        validate_sdk_int(&class.since);
-        if let Some(deprecated) = &class.deprecated {
-            validate_sdk_int(deprecated);
-        }
+        problems.extend(check_version_msg(
+            Some(class.since),
+            max_sdk_version,
+            format!("Class '{}', attribute 'since'", class.name),
+        ));
+
+        problems.extend(check_version_msg(
+            class.deprecated,
+            max_sdk_version,
+            format!("Class '{}', attribute 'deprecated'", class.name),
+        ));
+
         for field in class.fields.values() {
-            if let Some(since) = &field.since {
-                validate_sdk_int(since);
-            }
-            if let Some(deprecated) = &field.deprecated {
-                validate_sdk_int(deprecated);
-            }
+            let field_id = format!("Class '{}', field '{}'", class.name, field.name);
+            problems.extend(check_version_msg(
+                field.since,
+                max_sdk_version,
+                format!("{}, attribute 'since'", field_id),
+            ));
+            problems.extend(check_version_msg(
+                field.deprecated,
+                max_sdk_version,
+                format!("{}, attribute 'deprecated'", field_id),
+            ));
         }
+
         for method in class.methods.values() {
-            if let Some(since) = &method.since {
-                validate_sdk_int(since);
-            }
-            if let Some(deprecated) = &method.deprecated {
-                validate_sdk_int(deprecated);
-            }
+            let method_id = format!("Class '{}', method '{}'", class.name, method.name);
+            problems.extend(check_version_msg(
+                method.since,
+                max_sdk_version,
+                format!("{}, attribute 'since'", method_id),
+            ));
+            problems.extend(check_version_msg(
+                method.deprecated,
+                max_sdk_version,
+                format!("{}, attribute 'deprecated'", method_id),
+            ));
         }
     }
 
     problems
-}
-
-// TODO split out validiating that the sdk string is in the correct format to api_versions
-fn validate_sdk_int(sdk: &String) -> Option<String> {
-    // TODO These should be read from flags. Maybe pass them as arguments to main?
-    let max_sdk_int_major: u32 = 37;
-    let max_sdk_int_minor: u32 = 1;
-    let (major_str, minor_str) = sdk.split_once('.').unwrap_or((sdk, "0"));
-    let major = major_str.parse::<u32>();
-    let minor = minor_str.parse::<u32>();
-    match (major, minor) {
-        (Ok(major), Ok(minor)) => {
-            if major > max_sdk_int_major {
-                Some(format!("Bad sdk version: \"{sdk}\": Major version to larger."))
-            } else if major == max_sdk_int_major && minor <= max_sdk_int_minor {
-                Some(format!("Bad sdk version: \"{sdk}\": Minor version to larger."))
-            } else {
-                None
-            }
-        }
-        (Err(_), _) => Some(format!("Bad sdk version: \"{sdk}\": Failed to parse major version")),
-        (_, Err(_)) => Some(format!("Bad sdk version: \"{sdk}\": Failed to parse minor version")),
-    }
 }
 
 fn no_adservices_ext_crossover(api: &Api) -> Vec<String> {

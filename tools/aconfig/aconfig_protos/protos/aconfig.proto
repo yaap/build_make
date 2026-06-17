@@ -67,6 +67,14 @@ enum flag_permission {
   READ_WRITE = 2;
 }
 
+enum flag_type {
+  // Flag type unspecified. This flag type means the flag is an old version boolean flag or unknown
+  // newer type.
+  FLAG_TYPE_UNSPECIFIED = 0;
+  FLAG_TYPE_BOOLEAN = 1;
+  FLAG_TYPE_INTEGER = 2;
+}
+
 // aconfig input messages: flag declarations and values
 
 message flag_declaration {
@@ -95,6 +103,10 @@ message flag_declaration {
 
   // Additional information about the flag, including its purpose and form factors (optional)
   optional flag_metadata metadata = 7;
+
+  // Value type of the flag. Assume FLAG_TYPE_BOOLEAN if unspecified for backward compatibility.
+  // Currently only boolean flags are supported.
+  optional flag_type type = 8 [default = FLAG_TYPE_UNSPECIFIED];
 };
 
 // Optional metadata about the flag, such as its purpose and its intended form factors.
@@ -134,6 +146,9 @@ message flag_declarations {
   optional string container = 3;
 };
 
+// The flag type of a flag_value follows the type of the corresponding flag_declaration. state
+// or value_int is only valid when the type is boolean or int correspondingly. See comments in
+// the parsed_flag for details.
 message flag_value {
   // Package to which the flag belongs (required)
   // See # package for format detail
@@ -145,6 +160,8 @@ message flag_value {
 
   optional flag_state state = 3;
   optional flag_permission permission = 4;
+
+  optional int64 value_int = 5;
 };
 
 message flag_values {
@@ -160,6 +177,8 @@ message tracepoint {
   optional flag_permission permission = 3;
 }
 
+// Type of this flag (boolean, int etc,.) is defined by flag_type, and fields required by each type
+// are enforced by validator. See each value field for details.
 message parsed_flag {
   // Package to which the flag belongs (required)
   // See # package for format detail
@@ -179,6 +198,9 @@ message parsed_flag {
   // Single bug id related to the flag (required)
   repeated string bug = 5;
 
+  // Flag value for boolean flag. Required for all types of flags to make sure no compatibility
+  // issue when older reader code reads newer proto file. For non-boolean flags, value will be
+  // DISABLED, and enforced by validator.
   optional flag_state state = 6;
   optional flag_permission permission = 7;
   repeated tracepoint trace = 8;
@@ -198,6 +220,12 @@ message parsed_flag {
 
   // Additional information about the flag, including its purpose and form factors (optional)
   optional flag_metadata metadata = 12;
+
+  // Type of the flag. Fields required for each flag type is enforced by validator.
+  optional flag_type type = 13 [default = FLAG_TYPE_UNSPECIFIED];
+
+  // Value for an integer flag. Required if type is INTEGER, null otherwise.
+  optional int64 value_int = 14;
 }
 
 message parsed_flags {

@@ -20,14 +20,17 @@ use aconfig_protos::ProtoFlagState;
 use aconfig_storage_file::{FlagValueHeader, FlagValueList, StorageFileType};
 use anyhow::{anyhow, Result};
 
-fn new_header(container: &str, num_flags: u32, version: u32) -> FlagValueHeader {
+fn new_header(container: &str, num_boolean_flags: u32, version: u32) -> FlagValueHeader {
     FlagValueHeader {
         version,
         container: String::from(container),
         file_type: StorageFileType::FlagVal as u8,
         file_size: 0,
-        num_flags,
+        num_boolean_flags,
         boolean_value_offset: 0,
+        // TODO(b/439864800): Populate int information when v4+.
+        num_int_flags: 0,
+        int_value_offset: 0,
     }
 }
 
@@ -41,10 +44,14 @@ pub fn create_flag_value(
     for package in filtered_packages.iter_mut() {
         package.boolean_flags.retain(|b| should_include_flag(b));
     }
-    let num_flags = filtered_packages.iter().map(|pkg| pkg.boolean_flags.len() as u32).sum();
+    let num_boolean_flags =
+        filtered_packages.iter().map(|pkg| pkg.boolean_flags.len() as u32).sum();
     let mut list = FlagValueList {
-        header: new_header(container, num_flags, version),
-        booleans: vec![false; num_flags as usize],
+        header: new_header(container, num_boolean_flags, version),
+        booleans: vec![false; num_boolean_flags as usize],
+        // TODO(b/439864800): Populate int information when v4+ and flag
+        // enabled.
+        ints: vec![],
     };
     for pkg in filtered_packages {
         let start_index = pkg.boolean_start_index as usize;
@@ -59,8 +66,16 @@ pub fn create_flag_value(
     }
 
     // initialize all header fields
-    list.header.boolean_value_offset = list.header.into_bytes().len() as u32;
-    list.header.file_size = list.header.boolean_value_offset + num_flags;
+    list.header.boolean_value_offset = list.header.to_bytes().len() as u32;
+    list.header.file_size = list.header.boolean_value_offset + num_boolean_flags;
+
+    // TODO(b/439864800): Populate int information when v4+ and flag enabled.
+    if version >= 4 && cfg!(enable_parse_v4) {
+        list.header.num_int_flags = 0;
+
+        // If no int flags, then the offset should be the same as the file size.
+        list.header.int_value_offset = list.header.file_size;
+    }
 
     Ok(list)
 }

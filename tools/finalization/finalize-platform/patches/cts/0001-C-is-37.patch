@@ -1,0 +1,40 @@
+From c9d89bd3f1b903ee2cf66eda25b0f340b675d167 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 29 Jan 2026 12:25:58 +0000
+Subject: [PATCH] C is 37
+
+It's not a fifty-four-year-old programming language; it's not an
+element common to all known life; it's the next Android release!
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: Ic75c4873ab319216e230af9dfa7d0f45114e5aa1
+---
+ tests/tests/os/assets/platform_releases.txt             | 2 +-
+ tests/tests/os/src/android/os/cts/BuildVersionTest.java | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tests/tests/os/assets/platform_releases.txt b/tests/tests/os/assets/platform_releases.txt
+index b6a7d89c68e..98d9bcb75a6 100644
+--- a/tests/tests/os/assets/platform_releases.txt
++++ b/tests/tests/os/assets/platform_releases.txt
+@@ -1 +1 @@
+-16
++17
+diff --git a/tests/tests/os/src/android/os/cts/BuildVersionTest.java b/tests/tests/os/src/android/os/cts/BuildVersionTest.java
+index 8fc4ba7e841..514095d030c 100644
+--- a/tests/tests/os/src/android/os/cts/BuildVersionTest.java
++++ b/tests/tests/os/src/android/os/cts/BuildVersionTest.java
+@@ -50,7 +50,7 @@ import java.util.Set;
+ public class BuildVersionTest {
+ 
+     private static final String LOG_TAG = "BuildVersionTest";
+-    private static final List<Integer> EXPECTED_SDKS = List.of(35, 36);
++    private static final List<Integer> EXPECTED_SDKS = List.of(36, 37);
+     private static final String EXPECTED_BUILD_VARIANT = "user";
+     private static final String EXPECTED_KEYS = "release-keys";
+     private static final String PLATFORM_RELEASES_FILE = "platform_releases.txt";
+-- 
+2.53.0.rc1.225.gd81095ad13-goog
+

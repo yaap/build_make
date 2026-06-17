@@ -81,7 +81,6 @@ GEN := $$(local-generated-sources-dir)/manifest_$(1).xml
 $$(GEN): PRIVATE_SRC_FILES := $$(my_fragment_files)
 $$(GEN): $$(my_fragment_files) $$(HOST_OUT_EXECUTABLES)/assemble_vintf
 	BOARD_SEPOLICY_VERS=$$(BOARD_SEPOLICY_VERS) \
-	PRODUCT_ENFORCE_VINTF_MANIFEST=$$(PRODUCT_ENFORCE_VINTF_MANIFEST) \
 	$$(HOST_OUT_EXECUTABLES)/assemble_vintf -o $$@ \
 		-i $$(call normalize-path-list,$$(PRIVATE_SRC_FILES))
 

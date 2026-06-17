@@ -1,0 +1,70 @@
+package com.android.aconfig.test;
+
+
+import android.os.flagging.PlatformAconfigPackageInternal;
+import android.util.Log;
+/** @hide */
+final class FeatureFlagsImpl implements FeatureFlags {
+    private static final String TAG = "FeatureFlagsImpl";
+    private static volatile boolean isCached = false;
+
+    private static boolean disabledRw = false;
+    private static boolean disabledRwExported = false;
+    private static boolean disabledRwInOtherNamespace = false;
+    private static boolean enabledRw = true;
+
+    private void init() {
+        try {
+
+            PlatformAconfigPackageInternal reader = PlatformAconfigPackageInternal.load("com.android.aconfig.test", 0x5081CE7221C77064L);
+            disabledRw = reader.getBooleanFlagValue(0);
+            disabledRwExported = reader.getBooleanFlagValue(1);
+            enabledRw = reader.getBooleanFlagValue(7);
+            disabledRwInOtherNamespace = reader.getBooleanFlagValue(2);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+        } catch (LinkageError e) {
+            // for mainline module running on older devices.
+            // This should be replaces to version check, after the version bump.
+            Log.e(TAG, e.toString());
+        }
+        isCached = true;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRw() {
+        if (!isCached) {
+            init();
+        }
+        return disabledRw;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRwExported() {
+        if (!isCached) {
+            init();
+        }
+        return disabledRwExported;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRwInOtherNamespace() {
+        if (!isCached) {
+            init();
+        }
+        return disabledRwInOtherNamespace;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRw() {
+        if (!isCached) {
+            init();
+        }
+        return enabledRw;
+    }
+
+}

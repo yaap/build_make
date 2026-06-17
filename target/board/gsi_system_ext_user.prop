@@ -7,5 +7,4 @@ ro.nnapi.extensions.deny_on_product=true
 # TODO(b/120679683): disable RescueParty before all problem apps solved
 persist.sys.disable_rescue=true
 
-# TODO(b/78105955): disable privapp_permissions checking before the bug solved
-ro.control_privapp_permissions=disable
+ro.control_privapp_permissions=enforce

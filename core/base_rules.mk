@@ -588,13 +588,14 @@ ifneq (true,$(LOCAL_UNINSTALLABLE_MODULE))
       # have init.rc files that need to be installed alongside them.
       # Manually handle the case where the
       # output file is in the recovery or ramdisk partition.
-      ifneq (,$(filter $(TARGET_RECOVERY_ROOT_OUT)/%,$(my_module_path)))
-        ifneq (,$(filter $(TARGET_RECOVERY_ROOT_OUT)/first_stage_ramdisk/%,$(my_module_path)))
+      my_module_install_path := $(firstword $(LOCAL_SOONG_INSTALLED_MODULE) $(my_module_path))
+      ifneq (,$(filter $(TARGET_RECOVERY_ROOT_OUT)/%,$(my_module_install_path)))
+        ifneq (,$(filter $(TARGET_RECOVERY_ROOT_OUT)/first_stage_ramdisk/%,$(my_module_install_path)))
             my_init_rc_path := $(TARGET_RECOVERY_ROOT_OUT)/first_stage_ramdisk/system/etc
         else
             my_init_rc_path := $(TARGET_RECOVERY_ROOT_OUT)/system/etc
         endif
-      else ifneq (,$(filter $(TARGET_RAMDISK_OUT)/%,$(my_module_path)))
+      else ifneq (,$(filter $(TARGET_RAMDISK_OUT)/%,$(my_module_install_path)))
         my_init_rc_path := $(TARGET_RAMDISK_OUT)/system/etc
       else
         my_init_rc_path := $(TARGET_OUT$(partition_tag)_ETC)

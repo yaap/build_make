@@ -375,7 +375,7 @@ class BuildPlannerTest(unittest.TestCase):
     test_context = self.get_test_context(build_target)
     test_context['testInfos'][0]['extraOptions'] = [{
         'key': 'additional-files-filter',
-        'values': [f'.*{build_target}.*\.zip'],
+        'values': [rf'.*{build_target}.*\.zip'],
     }]
     build_planner = self.create_build_planner(
         build_targets={build_target},
@@ -410,7 +410,7 @@ class BuildPlannerTest(unittest.TestCase):
     test_context = self.get_test_context(build_target)
     test_context['testInfos'][0]['extraOptions'] = [{
         'key': 'additional-files-filter',
-        'values': [f'.*a{build_target}.*\.zip'],
+        'values': [rf'.*a{build_target}.*\.zip'],
     }]
     build_planner = self.create_build_planner(
         build_targets={build_target},

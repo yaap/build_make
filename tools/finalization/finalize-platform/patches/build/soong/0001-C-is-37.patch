@@ -1,0 +1,32 @@
+From 0f5a4f13f10d32dfaea372a2038678ac024d8420 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 29 Jan 2026 12:28:34 +0000
+Subject: [PATCH] C is 37
+
+It's not a fifty-four-year-old programming language; it's not an
+element common to all known life; it's the next Android release!
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: Iabfbc5ffda2fff87a21634eaf39c2cee2cd5fbe2
+---
+ android/api_levels.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/android/api_levels.go b/android/api_levels.go
+index b5fea1e5794..64f98dd0a45 100644
+--- a/android/api_levels.go
++++ b/android/api_levels.go
+@@ -472,7 +472,7 @@ func getApiLevelsMapReleasedVersions() (map[string]int, error) {
+ 		"UpsideDownCake":  34,
+ 		"VanillaIceCream": 35,
+ 		"Baklava":         36,
+-		"CinnamonBun":     10000,
++		"CinnamonBun":     37,
+ 		"CANARY":          10000,
+ 	}, nil
+ }
+-- 
+2.53.0.rc1.225.gd81095ad13-goog
+

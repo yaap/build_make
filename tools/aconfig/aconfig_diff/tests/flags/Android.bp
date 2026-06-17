@@ -1,0 +1,33 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+aconfig_declarations {
+    name: "aconfig_diff_test_flags_ro",
+    package: "com.android.aconfig.diff.test.ro",
+    container: "system",
+    srcs: ["test_flags_ro.aconfig"],
+    visibility: ["//build/make/tools/aconfig/aconfig_diff/tests:__subpackages__"],
+}
+
+java_aconfig_library {
+    name: "aconfig_diff_test_flags_lib_ro",
+    aconfig_declarations: "aconfig_diff_test_flags_ro",
+    sdk_version: "current",
+    visibility: ["//build/make/tools/aconfig/aconfig_diff/tests:__subpackages__"],
+}
+
+aconfig_declarations {
+    name: "aconfig_diff_test_flags_rw",
+    package: "com.android.aconfig.diff.test.rw",
+    container: "system",
+    srcs: ["test_flags_rw.aconfig"],
+    visibility: ["//build/make/tools/aconfig/aconfig_diff/tests:__subpackages__"],
+}
+
+java_aconfig_library {
+    name: "aconfig_diff_test_flags_lib_rw",
+    aconfig_declarations: "aconfig_diff_test_flags_rw",
+    sdk_version: "current",
+    visibility: ["//build/make/tools/aconfig/aconfig_diff/tests:__subpackages__"],
+}

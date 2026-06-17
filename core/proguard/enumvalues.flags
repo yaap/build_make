@@ -1,0 +1,9 @@
+# For enumeration classes, see http://proguard.sourceforge.net/manual/examples.html#enumerations
+# Reflective use of enum values is discouraged in the platform.
+# With R8 support for enum serialization tracing, there is even
+# less of a need. Specific targets can selectively include these rules
+# if necessary.
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}

@@ -7,16 +7,17 @@ tool detects any discrepancies, the build will fail.
 
 This document helps you understand and resolve the reported errors. There are
 two main types of errors: files present only in the Kati-defined image
-(`Kati only`) and files present only in the Soong-defined image (`Soong only`).
+(PRODUCT_PACKAGES) and files present only in the Soong-defined image
+(Handwritten `android_system_image` module in Android.bp).
 
 ## Understanding and Fixing Errors
 
-### Kati only installed files
+### Files from PRODUCT_PACKAGES that are missing in the Soong definition
 
 This error indicates that certain system modules are included via
 `PRODUCT_PACKAGES` in your device's Makefiles (`.mk` files) but are not
-explicitly defined within the `android_system_image` module or its default
-dependencies in `Android.bp`.
+explicitly defined within the `android_system_image` module (or its
+dependencies) in `Android.bp`.
 
 **To resolve this:**
 
@@ -28,7 +29,7 @@ in the `system_image_defaults` module within
 the relevant `android_system_image` module defined in
 `PRODUCT_SOONG_DEFINED_SYSTEM_IMAGE` for your target.
 
-### Soong only installed files
+### Files in the Soong definition that are missing from PRODUCT_PACKAGES
 
 This error means that certain system modules are present in the Soong-defined
 system image (specified by `PRODUCT_SOONG_DEFINED_SYSTEM_IMAGE`) but are not
@@ -39,6 +40,6 @@ included in the `PRODUCT_PACKAGES` list for your target.
 * **Remove Incorrect Modules:** If these modules shouldn't be part of the system
 image, remove them from the `android_system_image` module definition.
 * **Add Missing Modules to Makefiles:** If these modules are indeed required,
-add them to the appropriate `.mk` files, following the guidance in the "Kati
-only installed files" section to ensure they are correctly included in both the
-Kati and Soong definitions.
+add them to the appropriate `.mk` files, following the guidance in the previous
+section to ensure they are correctly included in both the Kati and Soong
+definitions.

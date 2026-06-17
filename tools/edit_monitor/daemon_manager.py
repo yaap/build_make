@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import collections.abc
 import errno
 import fcntl
 import getpass
@@ -35,6 +36,7 @@ from proto import edit_event_pb2
 
 DEFAULT_PROCESS_TERMINATION_TIMEOUT_SECONDS = 5
 DEFAULT_MONITOR_INTERVAL_SECONDS = 5
+DEFAULT_METRICS_WINDOW_SECONDS = 60 * 15  # 15 minutes
 DEFAULT_MEMORY_USAGE_THRESHOLD = 0.02  # 2% of total memory
 DEFAULT_CPU_USAGE_THRESHOLD = 200
 DEFAULT_REBOOT_TIMEOUT_SECONDS = 60 * 60 * 24
@@ -58,15 +60,22 @@ class DaemonManager:
       daemon_target: callable = default_daemon_target,
       daemon_args: tuple = (),
       cclient: clearcut_client.Clearcut | None = None,
+      target_repo: str | None = None,
+      is_dry_run: bool = False,
   ):
     self.binary_path = binary_path
     self.daemon_target = daemon_target
     self.daemon_args = daemon_args
+    self.is_dry_run = is_dry_run
     self.cclient = cclient or clearcut_client.Clearcut(LOG_SOURCE)
+    self.target_repo = target_repo
 
     self.user_name = getpass.getuser()
     self.host_name = platform.node()
-    self.source_root = os.environ.get("ANDROID_BUILD_TOP", "")
+    if target_repo == "chrome" and daemon_args:
+      self.source_root = daemon_args[0]
+    else:
+      self.source_root = os.environ.get("ANDROID_BUILD_TOP", "")
     self.pid = os.getpid()
     self.daemon_process = None
 
@@ -135,29 +144,65 @@ class DaemonManager:
       memory_threshold: float = DEFAULT_MEMORY_USAGE_THRESHOLD,
       cpu_threshold: float = DEFAULT_CPU_USAGE_THRESHOLD,
       reboot_timeout: int = DEFAULT_REBOOT_TIMEOUT_SECONDS,
+      metrics_window: int = DEFAULT_METRICS_WINDOW_SECONDS,
   ):
-    """Monits the daemon process status.
+    """Monitors the daemon process status.
 
-    Periodically check the CPU/Memory usage of the daemon process as long as the
-    process is still running and kill the process if the resource usage is above
-    given thresholds.
+    Periodically checks the CPU/Memory usage of the daemon process as long as the
+    process is still running and kills the process if the resource usage is above
+    given thresholds. It also records rolling metrics that are periodically uploaded.
     """
     if not self.daemon_process:
       return
 
     logging.info("start monitoring daemon process %d.", self.daemon_process.pid)
     reboot_time = time.time() + reboot_timeout
+
+    # Store aggregated metrics
+    last_metrics_flush_time = time.time()
+    cpu_samples = []
+    memory_samples = []
+
+    last_cpu_time = None
+    last_uptime = None
+
+    next_sample_time = time.time() + interval
     while self.daemon_process.is_alive():
+      # Sleep until the next sample time to prevent sampling drift.
+      sleep_time = next_sample_time - time.time()
+      if sleep_time > 0:
+        time.sleep(sleep_time)
+      next_sample_time = time.time() + interval
+
       if time.time() > reboot_time:
         self.reboot()
+
+      # Flush metrics if window has passed
+      current_time = time.time()
+      elapsed_time = current_time - last_metrics_flush_time
+      if elapsed_time >= metrics_window:
+        self._aggregate_and_send_metrics(cpu_samples, memory_samples, elapsed_time)
+        cpu_samples.clear()
+        memory_samples.clear()
+        last_metrics_flush_time = time.time()
       try:
         memory_usage = self._get_process_memory_percent(self.daemon_process.pid)
         self.max_memory_usage = max(self.max_memory_usage, memory_usage)
+        memory_samples.append(memory_usage)
 
-        cpu_usage = self._get_process_cpu_percent(self.daemon_process.pid)
-        self.max_cpu_usage = max(self.max_cpu_usage, cpu_usage)
+        current_cpu_time = self._get_total_cpu_time(self.daemon_process.pid)
+        current_uptime = self._get_uptime()
 
-        time.sleep(interval)
+        if last_cpu_time is not None and last_uptime is not None:
+          uptime_diff = current_uptime - last_uptime
+          if uptime_diff > 0:
+            cpu_usage = (current_cpu_time - last_cpu_time) / uptime_diff * 100
+            self.max_cpu_usage = max(self.max_cpu_usage, cpu_usage)
+            cpu_samples.append(cpu_usage)
+
+        last_cpu_time = current_cpu_time
+        last_uptime = current_uptime
+
       except Exception as e:
         # Logging the error and continue.
         logging.warning("Failed to monitor daemon process with error: %s", e)
@@ -277,7 +322,7 @@ class DaemonManager:
     try:
       with open(self.pid_file_path, "r") as f:
         return int(f.read().strip())
-    except FileNotFoundError as e:
+    except FileNotFoundError:
       logging.warning("pidfile %s does not exist.", self.pid_file_path)
       return None
 
@@ -385,7 +430,10 @@ class DaemonManager:
     process.
     """
     hash_object = hashlib.sha256()
-    hash_object.update(self.binary_path.encode("utf-8"))
+    if self.target_repo == "chrome":
+      hash_object.update("edit_monitor_chrome".encode("utf-8"))
+    else:
+      hash_object.update(self.binary_path.encode("utf-8"))
     pid_file_path = pid_file_dir.joinpath(hash_object.hexdigest() + ".lock")
     logging.info("pid_file_path: %s", pid_file_path)
 
@@ -396,7 +444,8 @@ class DaemonManager:
       stat_data = f.readline().split()
       # RSS is the 24th field in /proc/[pid]/stat
       rss_pages = int(stat_data[23])
-      process_memory = rss_pages * 4 * 1024  # Convert to bytes
+      page_size = os.sysconf("SC_PAGE_SIZE")
+      process_memory = rss_pages * page_size
 
     return (
         process_memory / self.total_memory_size
@@ -404,20 +453,9 @@ class DaemonManager:
         else 0.0
     )
 
-  def _get_process_cpu_percent(self, pid: int, interval: int = 1) -> float:
-    total_start_time = self._get_total_cpu_time(pid)
+  def _get_uptime(self) -> float:
     with open("/proc/uptime", "r") as f:
-      uptime_start = float(f.readline().split()[0])
-
-    time.sleep(interval)
-
-    total_end_time = self._get_total_cpu_time(pid)
-    with open("/proc/uptime", "r") as f:
-      uptime_end = float(f.readline().split()[0])
-
-    return (
-        (total_end_time - total_start_time) / (uptime_end - uptime_start) * 100
-    )
+      return float(f.readline().split()[0])
 
   def _get_total_cpu_time(self, pid: int) -> float:
     with open(f"/proc/{str(pid)}/stat", "r") as f:
@@ -447,11 +485,88 @@ class DaemonManager:
 
     return pids
 
+
+  def _aggregate_and_send_metrics(
+      self,
+      cpu_samples: collections.abc.Sequence[float],
+      memory_samples: collections.abc.Sequence[float],
+      time_window_seconds: float,
+  ):
+    """Aggregates CPU and memory samples and sends them to Clearcut."""
+    if not cpu_samples or not memory_samples:
+      return
+
+    self._send_metrics_event_to_clearcut(
+        cpu_usage_p50=self._get_percentile(cpu_samples, 0.5),
+        cpu_usage_p95=self._get_percentile(cpu_samples, 0.95),
+        cpu_usage_max=max(cpu_samples),
+        memory_usage_p50=self._get_percentile(memory_samples, 0.5) * self.total_memory_size,
+        memory_usage_p95=self._get_percentile(memory_samples, 0.95) * self.total_memory_size,
+        memory_usage_max=max(memory_samples) * self.total_memory_size,
+        time_window_seconds=time_window_seconds,
+    )
+
+  def _get_percentile(self, samples: collections.abc.Sequence[float], percentile: float) -> float:
+    """Returns the percentile value of a list of samples using linear interpolation."""
+    if not samples:
+      return 0.0
+
+    sorted_samples = sorted(samples)
+    index = (len(sorted_samples) - 1) * percentile
+    lower = int(index)
+    upper = lower + 1
+    weight = index - lower
+    if upper < len(sorted_samples):
+      return sorted_samples[lower] * (1 - weight) + sorted_samples[upper] * weight
+    return sorted_samples[lower]
+
+  def _send_metrics_event_to_clearcut(
+      self,
+      cpu_usage_p50,
+      cpu_usage_p95,
+      cpu_usage_max,
+      memory_usage_p50,
+      memory_usage_p95,
+      memory_usage_max,
+      time_window_seconds,
+  ):
+    edit_monitor_metrics_event_proto = edit_event_pb2.EditEvent(
+        user_name=self.user_name,
+        host_name=self.host_name,
+        source_root=self.source_root,
+        target_repo=self.target_repo or "",
+    )
+    edit_monitor_metrics_event_proto.metrics_event.CopyFrom(
+        edit_event_pb2.EditEvent.MetricsEvent(
+            cpu_usage_p50=cpu_usage_p50,
+            cpu_usage_p95=cpu_usage_p95,
+            cpu_usage_max=cpu_usage_max,
+            memory_usage_p50=memory_usage_p50,
+            memory_usage_p95=memory_usage_p95,
+            memory_usage_max=memory_usage_max,
+            time_window_seconds=time_window_seconds,
+        )
+    )
+    log_event = clientanalytics_pb2.LogEvent(
+        event_time_ms=int(time.time() * 1000),
+        source_extension=edit_monitor_metrics_event_proto.SerializeToString(),
+    )
+
+    if self.is_dry_run:
+      logging.info("Sent aggregated metrics to clearcut in dry run.")
+      logging.debug(f"Metrics event details: {edit_monitor_metrics_event_proto}")
+      return
+
+    self.cclient.log(log_event)
+    logging.info("Sent aggregated metrics to clearcut.")
+    logging.debug(f"Metrics event details: {edit_monitor_metrics_event_proto}")
+
   def _send_error_event_to_clearcut(self, error_type):
     edit_monitor_error_event_proto = edit_event_pb2.EditEvent(
         user_name=self.user_name,
         host_name=self.host_name,
         source_root=self.source_root,
+        target_repo=self.target_repo or "",
     )
     edit_monitor_error_event_proto.edit_monitor_error_event.CopyFrom(
         edit_event_pb2.EditEvent.EditMonitorErrorEvent(error_type=error_type)
@@ -460,4 +575,9 @@ class DaemonManager:
         event_time_ms=int(time.time() * 1000),
         source_extension=edit_monitor_error_event_proto.SerializeToString(),
     )
+
+    if self.is_dry_run:
+      logging.info(f"Sent error event in dry run: {edit_monitor_error_event_proto}")
+      return
+
     self.cclient.log(log_event)

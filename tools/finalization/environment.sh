@@ -2,7 +2,7 @@
 
 set -ex
 
-export FINAL_BUG_ID='0' # CI only
+export FINAL_BUG_ID='462135453' # CI only
 
 export FINAL_PLATFORM_CODENAME='VanillaIceCream'
 export CURRENT_PLATFORM_CODENAME='VanillaIceCream'
@@ -22,7 +22,7 @@ export FINAL_MAINLINE_EXTENSION='13'
 # 'vintf' - VINTF is finalized
 # 'sdk' - VINTF and SDK/API are finalized
 # 'rel' - branch is finalized, switched to REL
-export FINAL_STATE='unfinalized'
+export FINAL_STATE='vintf'
 
 export BUILD_FROM_SOURCE_STUB=true
 

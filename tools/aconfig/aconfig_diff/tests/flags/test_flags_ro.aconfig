@@ -1,0 +1,10 @@
+package: "com.android.aconfig.diff.test.ro"
+container: "system"
+
+flag {
+    name: "test_flag"
+    namespace: "aconfig_diff"
+    description: "A fixed read-only flag"
+    bug: "12345678"
+    is_fixed_read_only: true
+}

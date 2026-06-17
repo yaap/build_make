@@ -1,0 +1,1 @@
+per-file preinstalled-*.xml = file:platform/frameworks/base:main:/MULTIUSER_OWNERS

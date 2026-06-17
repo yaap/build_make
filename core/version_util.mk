@@ -67,12 +67,12 @@ ifdef PLATFORM_SDK_VERSION_FULL
   $(error Do not set PLATFORM_SDK_VERSION_FULL directly. Use RELEASE_PLATFORM_SDK_VERSION_FULL. value: $(PLATFORM_SDK_VERSION_FULL))
 endif
 ifeq ($(RELEASE_PLATFORM_SDK_VERSION_FULL),)
-  PLATFORM_SDK_VERSION_FULL := "$(PLATFORM_SDK_VERSION).0"
+  PLATFORM_SDK_VERSION_FULL := $(PLATFORM_SDK_VERSION).0
 else
   ifneq ($(RELEASE_PLATFORM_SDK_VERSION),$(word 1,$(subst ., ,$(RELEASE_PLATFORM_SDK_VERSION_FULL))))
     $(error if RELEASE_PLATFORM_SDK_VERSION_FULL ($(RELEASE_PLATFORM_SDK_VERSION_FULL)) is set, its major version must match RELEASE_PLATFORM_SDK_VERSION ($(RELEASE_PLATFORM_SDK_VERSION)))
   endif
-  PLATFORM_SDK_VERSION_FULL := "$(RELEASE_PLATFORM_SDK_VERSION_FULL)"
+  PLATFORM_SDK_VERSION_FULL := $(RELEASE_PLATFORM_SDK_VERSION_FULL)
 endif
 .KATI_READONLY := PLATFORM_SDK_VERSION_FULL
 
@@ -94,11 +94,32 @@ else
 endif
 .KATI_READONLY := PLATFORM_BASE_SDK_EXTENSION_VERSION
 
+ifdef PLATFORM_PROSPECTIVE_SDK_VERSION_FULL
+  $(error Do not set PLATFORM_PROSPECTIVE_SDK_VERSION_FULL directly. Use RELEASE_PLATFORM_PROSPECTIVE_SDK_VERSION_FULL. value: $(PLATFORM_PROSPECTIVE_SDK_VERSION_FULL))
+endif
+PLATFORM_PROSPECTIVE_SDK_VERSION_FULL := "$(RELEASE_PLATFORM_PROSPECTIVE_SDK_VERSION_FULL)"
+.KATI_READONLY := PLATFORM_PROSPECTIVE_SDK_VERSION_FULL
+
 ifdef PLATFORM_VERSION_CODENAME
   $(error Do not set PLATFORM_VERSION_CODENAME directly. Use RELEASE_PLATFORM_VERSION. value: $(PLATFORM_VERSION_CODENAME))
 endif
 PLATFORM_VERSION_CODENAME := $(RELEASE_PLATFORM_VERSION_CODENAME)
 .KATI_READONLY := PLATFORM_VERSION_CODENAME
+
+ifdef PLATFORM_PREVIEW_SDK_VERSION
+  $(error Do not set PLATFORM_PREVIEW_SDK_VERSION directly. Use RELEASE_PLATFORM_PREVIEW_SDK_INT. value: $(PLATFORM_PREVIEW_SDK_VERSION))
+endif
+PLATFORM_PREVIEW_SDK_VERSION := $(RELEASE_PLATFORM_PREVIEW_SDK_INT)
+.KATI_READONLY := PLATFORM_PREVIEW_SDK_VERSION
+ifeq (REL,$(PLATFORM_VERSION_CODENAME))
+  ifneq (0,$(PLATFORM_PREVIEW_SDK_VERSION))
+    $(error In finalized SDK builds (codename == REL) PLATFORM_PREVIEW_SDK_VERSION must be 0 but it is $(PLATFORM_PREVIEW_SDK_VERSION))
+  endif
+else
+  ifeq (0,$(PLATFORM_PREVIEW_SDK_VERSION))
+    $(error In non-finalized SDK builds (codename != REL) PLATFORM_PREVIEW_SDK_VERSION must be non-0 but it is 0)
+  endif
+endif
 
 ifdef PLATFORM_VERSION_ALL_CODENAMES
   $(error Do not set PLATFORM_VERSION_ALL_CODENAMES directly. Use RELEASE_PLATFORM_VERSION_ALL_CODENAMES. value: $(PLATFORM_VERSION_ALL_CODENAMES))
@@ -137,27 +158,6 @@ ifndef PLATFORM_DISPLAY_VERSION
   PLATFORM_DISPLAY_VERSION := $(PLATFORM_VERSION)
 endif
 .KATI_READONLY := PLATFORM_DISPLAY_VERSION
-
-ifeq (REL,$(PLATFORM_VERSION_CODENAME))
-  PLATFORM_PREVIEW_SDK_VERSION := 0
-else
-  ifndef PLATFORM_PREVIEW_SDK_VERSION
-    # This is the definition of a preview SDK version over and above the current
-    # platform SDK version. Unlike the platform SDK version, a higher value
-    # for preview SDK version does NOT mean that all prior preview APIs are
-    # included. Packages reading this value to determine compatibility with
-    # known APIs should check that this value is precisely equal to the preview
-    # SDK version the package was built for, otherwise it should fall back to
-    # assuming the device can only support APIs as of the previous official
-    # public release.
-    # This value will always be forced to 0 for release builds by the logic
-    # in the "ifeq" block above, so the value below will be used on any
-    # non-release builds, and it should always be at least 1, to indicate that
-    # APIs may have changed since the claimed PLATFORM_SDK_VERSION.
-    PLATFORM_PREVIEW_SDK_VERSION := 1
-  endif
-endif
-.KATI_READONLY := PLATFORM_PREVIEW_SDK_VERSION
 
 ifndef DEFAULT_APP_TARGET_SDK
   # This is the default minSdkVersion and targetSdkVersion to use for

@@ -97,7 +97,7 @@ func newMultiStringPair(flags *flag.FlagSet, name, usage string) *multiStringPai
 }
 
 type stringPair struct {
-	first string
+	first  string
 	second string
 }
 
@@ -107,7 +107,7 @@ type multiStringPair []stringPair
 func (ms *multiStringPair) String() string {
 	var parts []string
 	for _, p := range *ms {
-		parts = append(parts, p.first + ":::" + p.second)
+		parts = append(parts, p.first+":::"+p.second)
 	}
 	return strings.Join(parts, ", ")
 }
@@ -119,7 +119,6 @@ func (ms *multiStringPair) Set(s string) error {
 	*ms = append(*ms, stringPair{parts[0], parts[1]})
 	return nil
 }
-
 
 // newMultiStringSet creates a flag that allows multiple values in an set.
 func newMultiStringSet(flags *flag.FlagSet, name, usage string) *multiStringSet {
@@ -232,16 +231,16 @@ Options:
 	var deps []string
 
 	ctx := &context{
-		stdout: ofile,
-		stderr: os.Stderr,
-		rootFS: compliance.FS,
-		product: *product,
+		stdout:      ofile,
+		stderr:      os.Stderr,
+		rootFS:      compliance.FS,
+		product:     *product,
 		stripPrefix: *stripPrefix,
-		title: *title,
-		deps: &deps,
-		filter: *filter,
-		filterTo: *filterTo,
-		replace: *replace,
+		title:       *title,
+		deps:        &deps,
+		filter:      *filter,
+		filterTo:    *filterTo,
+		replace:     *replace,
 	}
 
 	err := textNotice(ctx, flags.Args()...)

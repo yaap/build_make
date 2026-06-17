@@ -1,0 +1,18 @@
+package com.android.aconfig.test;
+
+/** @hide */
+public interface FeatureFlags {
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean disabledRw();
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean disabledRwExported();
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean disabledRwInOtherNamespace();
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean enabledRw();
+
+}

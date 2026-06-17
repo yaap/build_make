@@ -69,7 +69,7 @@ fn read_files_to_map_using_env() -> Result<FinalizedFlagMap> {
         if let Some(path) = flag_file_path.to_str() {
             flag_files.push(path.to_string());
         } else {
-            eprintln!("Error converting path to string: {:?}", flag_file_path);
+            eprintln!("Error converting path to string: {flag_file_path:?}");
         }
     }
 

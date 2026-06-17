@@ -91,10 +91,10 @@ mod tests {
         // The safety here is guaranteed here as no writes happens to this temp file
         unsafe {
             let error = map_file(&flag_val).unwrap_err();
-            assert_eq!(
-                format!("{:?}", error),
-                format!("MapFileFail(fail to map non read write storage file {})", flag_val)
-            );
+            assert!(format!("{:?}", error).starts_with(&format!(
+                "MapFileFail(fail to map non read write storage file {}",
+                flag_val
+            )));
         }
     }
 }

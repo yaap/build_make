@@ -55,11 +55,12 @@ pub(crate) fn get_flag_offset_in_storage_file(
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, ValueEnum)]
 pub enum CodegenMode {
     Exported,
     ForceReadOnly,
     Production,
+    #[default]
     Test,
 }
 
@@ -98,7 +99,7 @@ mod tests {
         pf.set_permission(ProtoFlagPermission::READ_ONLY);
         let error = get_flag_offset_in_storage_file(&flag_ids, pf).unwrap_err();
         assert_eq!(
-            format!("{error:?}"),
+            error.to_string(),
             "flag com.android.aconfig.test.disabled_rw should not have an assigned flag id in new storage file"
         );
 
@@ -108,7 +109,7 @@ mod tests {
         pf.set_permission(ProtoFlagPermission::READ_WRITE);
         let error = get_flag_offset_in_storage_file(&flag_ids, pf).unwrap_err();
         assert_eq!(
-            format!("{error:?}"),
+            error.to_string(),
             "flag com.android.aconfig.test.enabled_rw should have an assigned flag id in new storage file"
         );
     }

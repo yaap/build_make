@@ -751,4 +751,18 @@ ifdef PRODUCT_SOONG_ONLY
   endif
 endif
 
+ifdef PRODUCT_SOONG_INCREMENTAL_ANALYSIS
+  ifneq ($(PRODUCT_SOONG_INCREMENTAL_ANALYSIS),true)
+    ifneq ($(PRODUCT_SOONG_INCREMENTAL_ANALYSIS),false)
+      $(error PRODUCT_SOONG_INCREMENTAL_ANALYSIS can only be true, false or unset)
+    endif
+  endif
+endif
+
+ifndef PRODUCT_ENFORCE_SELINUX_TREBLE_LABELING
+  ifeq (true,$(call math_gt_or_eq,$(RELEASE_BOARD_API_LEVEL),202604))
+    PRODUCT_ENFORCE_SELINUX_TREBLE_LABELING := true
+  endif
+endif
+
 $(call readonly-product-vars)

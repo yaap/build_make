@@ -1,0 +1,42 @@
+package com.android.aconfig.test;
+
+/** @hide */
+public final class FeatureFlagsImpl implements FeatureFlags {
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRo() {
+        return false;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRw() {
+        return false;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean disabledRwInOtherNamespace() {
+        return false;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledFixedRo() {
+        return true;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRo() {
+        return true;
+    }
+
+    @Override
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public boolean enabledRw() {
+        return true;
+    }
+
+}

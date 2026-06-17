@@ -1,0 +1,30 @@
+package com.android.aconfig.test;
+
+import android.os.Build;
+/**
+ * @deprecated Use {@link ExportedFlags} instead.
+ */
+@Deprecated
+public final class Flags {
+    /** @hide */
+    public static final String FLAG_DISABLED_RW_EXPORTED = "com.android.aconfig.test.disabled_rw_exported";
+    /** @hide */
+    public static final String FLAG_ENABLED_FIXED_RO_EXPORTED = "com.android.aconfig.test.enabled_fixed_ro_exported";
+    /** @hide */
+    public static final String FLAG_ENABLED_RO_EXPORTED = "com.android.aconfig.test.enabled_ro_exported";
+    public static boolean disabledRwExported() {
+        if (Build.VERSION.SDK_INT >= 36) {
+          return true;
+        }
+        return FEATURE_FLAGS.disabledRwExported();
+    }
+    public static boolean enabledFixedRoExported() {
+        return FEATURE_FLAGS.enabledFixedRoExported();
+    }
+    public static boolean enabledRoExported() {
+        return FEATURE_FLAGS.enabledRoExported();
+    }
+
+    private static FeatureFlags FEATURE_FLAGS = new FeatureFlagsImpl();
+
+}

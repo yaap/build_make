@@ -1,0 +1,38 @@
+package com.android.aconfig.test;
+
+/** @hide */
+public interface FeatureFlags {
+
+    @com.android.aconfig.annotations.AssumeFalseForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean disabledRo();
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean disabledRw();
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean disabledRwExported();
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean disabledRwInOtherNamespace();
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean enabledFixedRo();
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean enabledFixedRoExported();
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean enabledRo();
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean enabledRoExported();
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    boolean enabledRw();
+
+}

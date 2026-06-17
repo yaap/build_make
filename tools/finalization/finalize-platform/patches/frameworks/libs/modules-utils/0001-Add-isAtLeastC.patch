@@ -1,0 +1,50 @@
+From 118e5c7c2d370e832f38c73a4c6a9c7a39dacffa Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 19 Feb 2026 20:04:58 +0000
+Subject: [PATCH] Add isAtLeastC
+
+Add isAtLeastC as part of the Android 37.0 finalization.
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: Id7a8ac1a59f9e4d6cf8b06163e20f92bfa93ad08
+---
+ build/include/android-modules-utils/sdk_level.h    | 3 +++
+ java/com/android/modules/utils/build/SdkLevel.java | 6 ++++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/build/include/android-modules-utils/sdk_level.h b/build/include/android-modules-utils/sdk_level.h
+index a4a8113f1dc..72c05dad8e0 100644
+--- a/build/include/android-modules-utils/sdk_level.h
++++ b/build/include/android-modules-utils/sdk_level.h
+@@ -66,6 +66,9 @@ inline bool IsAtLeastV() {
+ // Checks if the device is running on release version of Android B or newer.
+ inline bool IsAtLeastB() { return android_get_device_api_level() >= 36; }
+ 
++// Checks if the device is running on release version of Android C or newer.
++inline bool IsAtLeastC() { return android_get_device_api_level() >= 37; }
++
+ } // namespace sdklevel
+ } // namespace modules
+ } // namespace android
+diff --git a/java/com/android/modules/utils/build/SdkLevel.java b/java/com/android/modules/utils/build/SdkLevel.java
+index 3b1d2bbe7b7..77f2b3a63d2 100644
+--- a/java/com/android/modules/utils/build/SdkLevel.java
++++ b/java/com/android/modules/utils/build/SdkLevel.java
+@@ -77,6 +77,12 @@ public final class SdkLevel {
+         return SDK_INT >= 36;
+     }
+ 
++    /** Checks if the device is running on a release version of Android CinnamonBun or newer */
++    @ChecksSdkIntAtLeast(api = 37 /* BUILD_VERSION_CODES.CINNAMON_BUN */)
++    public static boolean isAtLeastC() {
++        return SDK_INT >= 37;
++    }
++
+     private static boolean isAtLeastPreReleaseCodename(@NonNull String codename) {
+         // Special case "REL", which means the build is not a pre-release build.
+         if ("REL".equals(CODENAME)) {
+-- 
+2.53.0.345.g96ddfc5eaa-goog
+

@@ -26,12 +26,6 @@ static FLAG_VAL_MAP: LazyLock<Result<Mmap, AconfigStorageError>> = LazyLock::new
 /// flag value cache for {flag.name}
 static CACHED_{flag.name}: LazyLock<bool> = LazyLock::new(|| \{
 
-    // This will be called multiple times. Subsequent calls after the first are noops.
-    logger::init(
-        logger::Config::default()
-            .with_tag_on_device("aconfig_rust_codegen")
-            .with_max_level(LevelFilter::Info));
-
     {{ -if use_package_fingerprint }}
     let fingerprint_check_failed: bool = PACKAGE_CONTEXT
         .as_ref()

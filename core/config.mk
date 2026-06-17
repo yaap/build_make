@@ -319,6 +319,13 @@ $(call soong_config_define_internal,$1,$2) \
 $(eval SOONG_CONFIG_$(strip $1)_$(strip $2):=$(strip $3))
 endef
 
+# soong_config_set_if_exist defines the variable in the given Soong config
+# namespace and sets its value ONLY if the value is not empty.
+# $1 is the namespace. $2 is the variable name. $3 is the variable value.
+define soong_config_set_if_exist
+$(if $(strip $3),$(call soong_config_set,$1,$2,$3))
+endef
+
 # soong_config_set_bool is the same as soong_config_set, but it will
 # also type the variable as a bool, so that when using select() expressions
 # in blueprint files they can use boolean values instead of strings.
@@ -337,10 +344,9 @@ endef
 # in blueprint files they can use integer values instead of strings.
 # It will error out if a non-integer is supplied
 # $1 is the namespace. $2 is the variable name. $3 is the variable value.
-# Ex: $(call soong_config_set_bool,acme,COOL_FEATURE,34)
+# Ex: $(call soong_config_set_int,acme,COOL_FEATURE,34)
 define soong_config_set_int
-$(call soong_config_define_internal,$1,$2) \
-$(if $(call math_is_int,$3),,$(error soong_config_set_int called with non-integer value $(3)))
+$(call soong_config_define_internal,$1,$2)
 $(eval SOONG_CONFIG_$(strip $1)_$(strip $2):=$(strip $3))
 $(eval SOONG_CONFIG_TYPE_$(strip $1)_$(strip $2):=int)
 endef
@@ -458,6 +464,24 @@ else
   TARGET_MAX_PAGE_SIZE_SUPPORTED := 16384
 endif
 .KATI_READONLY := TARGET_MAX_PAGE_SIZE_SUPPORTED
+
+TARGET_RESTRICTS_ASHMEM_USAGE := false
+
+# If the vendor API level is 202604, then the device restricts what
+# applications can use ashmem.
+#
+# Check if the build is for CF on either WearOS or TV, as they are pinned to
+# older kernel versions that do not have memfd_class support, and therefore
+# must continue to use ashmem unconditionally. This can be simplified to just
+# the VSR_VENDOR_API_LEVEL check once all CF instances move to kernel version
+# 6.12 or newer.
+ifeq ($(call math_gt_or_eq,$(VSR_VENDOR_API_LEVEL),202604),true)
+ifneq (true,$(CLOCKWORK_EMULATOR_PRODUCT))
+ifeq (,$(findstring x86_tv,$(PRODUCT_NAME)))
+  TARGET_RESTRICTS_ASHMEM_USAGE := true
+endif
+endif
+endif
 
 # Boolean variable determining if AOSP relies on bionic's PAGE_SIZE macro.
 ifdef PRODUCT_NO_BIONIC_PAGE_SIZE_MACRO
@@ -712,7 +736,6 @@ APICHECK := $(HOST_OUT_JAVA_LIBRARIES)/metalava$(COMMON_JAVA_PACKAGE_SUFFIX)
 MKEXTUSERIMG := $(HOST_OUT_EXECUTABLES)/mkuserimg_mke2fs
 MKE2FS_CONF := system/extras/ext4_utils/mke2fs.conf
 MKEROFS := $(HOST_OUT_EXECUTABLES)/mkfs.erofs
-MKSQUASHFSUSERIMG := $(HOST_OUT_EXECUTABLES)/mksquashfsimage
 MKF2FSUSERIMG := $(HOST_OUT_EXECUTABLES)/mkf2fsuserimg
 SIMG2IMG := $(HOST_OUT_EXECUTABLES)/simg2img$(HOST_EXECUTABLE_SUFFIX)
 E2FSCK := $(HOST_OUT_EXECUTABLES)/e2fsck$(HOST_EXECUTABLE_SUFFIX)
@@ -773,18 +796,8 @@ endif
 .KATI_READONLY := \
     PRODUCT_COMPATIBLE_PROPERTY
 
-# TODO: remove all code referencing these, and remove override variables
-PRODUCT_FULL_TREBLE := true
-PRODUCT_TREBLE_LINKER_NAMESPACES := true
-PRODUCT_ENFORCE_VINTF_MANIFEST := true
-
-# TODO(b/114488870): disallow PRODUCT_FULL_TREBLE_OVERRIDE from being used.
-.KATI_READONLY := \
-    PRODUCT_FULL_TREBLE \
-    PRODUCT_TREBLE_LINKER_NAMESPACES \
-    PRODUCT_ENFORCE_VINTF_MANIFEST \
-
-# TODO(b/114488870): remove all sets of these everywhere, and disallow them to be used
+$(KATI_obsolete_var PRODUCT_TREBLE_LINKER_NAMESPACES,This is now always true.)
+$(KATI_obsolete_var PRODUCT_ENFORCE_VINTF_MANIFEST,This is now always true.)
 $(KATI_obsolete_var PRODUCT_TREBLE_LINKER_NAMESPACES_OVERRIDE,Deprecated.)
 $(KATI_obsolete_var PRODUCT_ENFORCE_VINTF_MANIFEST_OVERRIDE,Deprecated.)
 $(KATI_obsolete_var PRODUCT_FULL_TREBLE_OVERRIDE,Deprecated.)
@@ -793,9 +806,7 @@ $(KATI_obsolete_var PRODUCT_FULL_TREBLE_OVERRIDE,Deprecated.)
 # partitions is supported. But the early-mount must be supported for full
 # treble products, and so BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED should be set
 # by default for full treble products.
-ifeq ($(PRODUCT_FULL_TREBLE),true)
-  BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED ?= true
-endif
+BOARD_PROPERTY_OVERRIDES_SPLIT_ENABLED ?= true
 
 ifneq ($(call math_gt_or_eq,$(PRODUCT_SHIPPING_API_LEVEL),36),)
   ifneq ($(NEED_AIDL_NDK_PLATFORM_BACKEND),)
@@ -860,14 +871,35 @@ else
 endif
 .KATI_READONLY := MAINLINE_SEPOLICY_DEV_CERTIFICATES
 
+# Certificate for the Bluetooth sepolicy context
 ifdef PRODUCT_MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES
-  MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES  := $(PRODUCT_MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES)
-else ifneq (,$(filter com.google.android.bt,$(PRODUCT_PACKAGES)))
-  MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES  := $(MAINLINE_SEPOLICY_DEV_CERTIFICATES)
+  # Priority 1: Use the product specific variable if defined
+  MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES := $(PRODUCT_MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES)
+else ifneq (,$(filter com.google.android.bt com.google.android.bt_compressed com.google.android.go.bt,$(PRODUCT_PACKAGES)))
+  # Priority 2: Use Mainline Sepolicy cert if the Bluetooth module is detected
+  MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES := $(MAINLINE_SEPOLICY_DEV_CERTIFICATES)
+else ifeq (,$(filter com.google.android.art com.google.android.art_compressed com.google.android.go.art,$(PRODUCT_PACKAGES)))
+  # Priority 3: AOSP / No-Mainline Detection
+  # If NO ART module package is found, we assume this is a legacy/AOSP build without mainline support.
+  # In this case, use the directory of the default system dev certificate.
+  MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES := $(dir $(DEFAULT_SYSTEM_DEV_CERTIFICATE))
 else
-  MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES  := $(dir build/make/target/product/security/testkey)
+  # Priority 4: Fallback
+  # We have some mainline modules (ART exists), but without the Bluetooth module.
+  # Use the standard testkey directory.
+  MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES := $(dir build/make/target/product/security/testkey)
 endif
 .KATI_READONLY := MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES
+
+# Certificate for the Bluetooth sepolicy context
+ifdef PRODUCT_MAINLINE_NFC_SEPOLICY_DEV_CERTIFICATES
+  # Priority 1: Use the product specific variable if defined
+  MAINLINE_NFC_SEPOLICY_DEV_CERTIFICATES := $(PRODUCT_MAINLINE_NFC_SEPOLICY_DEV_CERTIFICATES)
+else
+  # Priority 2: Use Mainline Sepolicy cert
+  MAINLINE_NFC_SEPOLICY_DEV_CERTIFICATES := $(MAINLINE_SEPOLICY_DEV_CERTIFICATES)
+endif
+.KATI_READONLY := MAINLINE_NFC_SEPOLICY_DEV_CERTIFICATES
 
 BUILD_NUMBER_FROM_FILE := $$(cat $(SOONG_OUT_DIR)/build_number.txt)
 BUILD_HOSTNAME_FROM_FILE := $$(cat $(SOONG_OUT_DIR)/build_hostname.txt)
@@ -883,8 +915,6 @@ BOARD_SEPOLICY_VERS := $(PLATFORM_SEPOLICY_VERSION)
 
 # A list of SEPolicy versions, besides PLATFORM_SEPOLICY_VERSION, that the framework supports.
 PLATFORM_SEPOLICY_COMPAT_VERSIONS := \
-    29.0 \
-    30.0 \
     31.0 \
     32.0 \
     33.0 \
@@ -893,6 +923,7 @@ PLATFORM_SEPOLICY_COMPAT_VERSIONS := \
 PLATFORM_SEPOLICY_COMPAT_VERSIONS += $(foreach ver,\
     202404 \
     202504 \
+    202604 \
     ,$(if $(filter true,$(call math_gt,$(PLATFORM_SEPOLICY_VERSION),$(ver))),$(ver)))
 
 .KATI_READONLY := \
@@ -1109,6 +1140,37 @@ BOARD_KERNEL_MODULES_16K := $(foreach \
 )
 endif # BOARD_KERNEL_MODULES_16K
 
+ifdef BOARD_KERNEL_MODULES_ZIP
+  disallowed_variables := \
+    BOARD_SYSTEM_KERNEL_MODULES \
+    BOARD_SYSTEM_KERNEL_MODULES_BLOCKLIST_FILE \
+    BOARD_SYSTEM_KERNEL_MODULES_LOAD \
+    BOARD_VENDOR_KERNEL_MODULES \
+    BOARD_VENDOR_KERNEL_MODULES_BLOCKLIST_FILE \
+    BOARD_VENDOR_KERNEL_MODULES_2ND_STAGE_16KB_MODE \
+    BOARD_VENDOR_KERNEL_MODULES_LOAD \
+    BOARD_DO_NOT_STRIP_VENDOR_MODULES \
+    BOARD_ODM_KERNEL_MODULES \
+    BOARD_ODM_KERNEL_MODULES_BLOCKLIST_FILE \
+    BOARD_VENDOR_RAMDISK_KERNEL_MODULES \
+    BOARD_VENDOR_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE \
+    BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD \
+    BOARD_VENDOR_RAMDISK_KERNEL_MODULES_OPTIONS_FILE \
+    BOARD_DO_NOT_STRIP_VENDOR_RAMDISK_MODULES \
+    BOARD_VENDOR_KERNEL_RAMDISK_KERNEL_MODULES \
+    BOARD_VENDOR_KERNEL_RAMDISK_KERNEL_MODULES_BLOCKLIST_FILE \
+    BOARD_KERNEL_MODULES_16K \
+    BOARD_KERNEL_MODULES_LOAD_16K \
+
+  # Additional kernel-module related variables that are allowed when using a kernel module zip:
+  # - BOARD_DO_NOT_STRIP_VENDOR_MODULES
+
+  # Could consider denying them, but it'll probably require a lot of product config changes.
+  $(foreach var,$(disallowed_variables), \
+    $(if $($(var)),$(eval $(var) :=)))
+
+  disallowed_variables :=
+endif
 
 # By default, we build the hidden API csv files from source. You can use
 # prebuilt hiddenapi files by setting BOARD_PREBUILT_HIDDENAPI_DIR to the name
@@ -1373,8 +1435,8 @@ endif
 BUILD_VERSION_TAGS += $(BUILD_KEYS)
 BUILD_VERSION_TAGS := $(subst $(space),$(comma),$(sort $(BUILD_VERSION_TAGS)))
 
-# BUILD_FINGERPRINT is used used to uniquely identify the combined build and
-# product; used by the OTA server.
+# BUILD_FINGERPRINT is used to uniquely identify the combined build and product;
+# used by the OTA server.
 ifeq (,$(strip $(BUILD_FINGERPRINT)))
   BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER_FROM_FILE):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
 endif
@@ -1387,6 +1449,11 @@ endif
 BUILD_FINGERPRINT_FROM_FILE := $$(cat $(BUILD_FINGERPRINT_FILE))
 # unset it for safety.
 BUILD_FINGERPRINT :=
+
+BUILD_UUID_FILE := $(SOONG_OUT_DIR)/build_uuid-$(TARGET_PRODUCT).txt
+BUILD_UUID_FROM_FILE := $$(cat $(BUILD_UUID_FILE))
+# unset it for safety.
+BUILD_UUID_FILE :=
 
 # BUILD_THUMBPRINT is used to uniquely identify the system build; used by the
 # OTA server. This purposefully excludes any product-specific variables.
@@ -1405,3 +1472,20 @@ endif
 # unset it for safety.
 BUILD_THUMBPRINT_FILE :=
 BUILD_THUMBPRINT :=
+
+# BUILD_SYSTEM_FINGERPRINT is a fingerprint of the system image. Different from
+# the BUILD_THUMBPRINT, it includes system image attributes to uniquely identify
+# the system image; This purposefully excludes any product-specific variables.
+ifeq (,$(strip $(BUILD_SYSTEM_FINGERPRINT)))
+  BUILD_SYSTEM_FINGERPRINT := $(PRODUCT_SYSTEM_BRAND)/$(PRODUCT_SYSTEM_NAME)/$(PRODUCT_SYSTEM_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER_FROM_FILE):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
+endif
+
+# In order to allow product-config to be run in parallel for multiple lunch targets, the build_system_fingerprint file is product-specific.
+BUILD_SYSTEM_FINGERPRINT_FILE := $(PRODUCT_OUT)/build_system_fingerprint-$(TARGET_PRODUCT).txt
+ifneq (,$(shell mkdir -p $(PRODUCT_OUT) && echo $(BUILD_SYSTEM_FINGERPRINT) >$(BUILD_SYSTEM_FINGERPRINT_FILE).tmp && (if ! cmp -s $(BUILD_SYSTEM_FINGERPRINT_FILE).tmp $(BUILD_SYSTEM_FINGERPRINT_FILE); then mv $(BUILD_SYSTEM_FINGERPRINT_FILE).tmp $(BUILD_SYSTEM_FINGERPRINT_FILE); else rm $(BUILD_SYSTEM_FINGERPRINT_FILE).tmp; fi) && grep " " $(BUILD_SYSTEM_FINGERPRINT_FILE)))
+  $(error BUILD_SYSTEM_FINGERPRINT cannot contain spaces: "$(file <$(BUILD_SYSTEM_FINGERPRINT_FILE))")
+endif
+BUILD_SYSTEM_FINGERPRINT_FROM_FILE := $$(cat $(BUILD_SYSTEM_FINGERPRINT_FILE))
+# unset it for safety.
+BUILD_SYSTEM_FINGERPRINT_FILE :=
+BUILD_SYSTEM_FINGERPRINT :=

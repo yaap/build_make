@@ -2,13 +2,6 @@
 
 set -ex
 
-function apply_droidstubs_hack() {
-    if ! grep -q 'STOPSHIP: RESTORE THIS LOGIC WHEN DECLARING "REL" BUILD' "$top/build/soong/java/droidstubs.go" ; then
-        local build_soong_git_root="$(readlink -f $top/build/soong)"
-        patch --strip=1 --no-backup-if-mismatch --directory="$build_soong_git_root" --input=../../build/make/tools/finalization/build_soong_java_droidstubs.go.apply_hack.diff
-    fi
-}
-
 function finalize_bionic_ndk() {
     # Adding __ANDROID_API_<>__.
     # If this hasn't done then it's not used and not really needed. Still, let's check and add this.
@@ -102,9 +95,6 @@ function finalize_sdk_resources() {
     local SDK_VERSION="public static final int $FINAL_PLATFORM_CODENAME_JAVA = $FINAL_PLATFORM_SDK_VERSION;"
 
     # The full process can be found at (INTERNAL) go/android-sdk-finalization.
-
-    # apply droidstubs hack to prevent tools from incrementing an API version
-    apply_droidstubs_hack
 
     # bionic/NDK
     finalize_bionic_ndk

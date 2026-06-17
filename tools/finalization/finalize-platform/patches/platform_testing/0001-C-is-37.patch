@@ -1,0 +1,29 @@
+From c12cb3ceed07d9b07c11c26ef99167c0272bb503 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 29 Jan 2026 12:20:59 +0000
+Subject: [PATCH] C is 37
+
+It's not a fifty-four-year-old programming language; it's not an
+element common to all known life; it's the next Android release!
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: I4b3afb721eb8ce69809090073db50c6b10c5d580
+---
+ .../src/com/android/compatibility/common/util/VersionCodes.java  | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libraries/compatibility-common-util/src/com/android/compatibility/common/util/VersionCodes.java b/libraries/compatibility-common-util/src/com/android/compatibility/common/util/VersionCodes.java
+index 09783513559..e7748765137 100644
+--- a/libraries/compatibility-common-util/src/com/android/compatibility/common/util/VersionCodes.java
++++ b/libraries/compatibility-common-util/src/com/android/compatibility/common/util/VersionCodes.java
+@@ -54,4 +54,5 @@ public class VersionCodes {
+     public static final int UPSIDE_DOWN_CAKE = 34;
+     public static final int VANILLA_ICE_CREAM = 35;
+     public static final int BAKLAVA = 36;
++    public static final int CINNAMON_BUN = 37;
+ }
+-- 
+2.53.0.rc1.225.gd81095ad13-goog
+

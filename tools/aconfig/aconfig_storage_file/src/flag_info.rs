@@ -17,7 +17,9 @@
 //! flag info module defines the flag info file format and methods for serialization
 //! and deserialization
 
-use crate::{read_str_from_bytes, read_u32_from_bytes, read_u8_from_bytes};
+use crate::{
+    read_str_from_bytes, read_u32_from_bytes, read_u8_from_bytes, MAX_SUPPORTED_FILE_VERSION,
+};
 use crate::{AconfigStorageError, StorageFileType};
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
@@ -30,8 +32,10 @@ pub struct FlagInfoHeader {
     pub container: String,
     pub file_type: u8,
     pub file_size: u32,
-    pub num_flags: u32,
+    pub num_boolean_flags: u32,
     pub boolean_flag_offset: u32,
+    pub num_int_flags: u32,
+    pub int_flag_offset: u32,
 }
 
 /// Implement debug print trait for header
@@ -47,9 +51,16 @@ impl fmt::Debug for FlagInfoHeader {
         )?;
         writeln!(
             f,
-            "Num of Flags: {}, Boolean Flag Offset:{}",
-            self.num_flags, self.boolean_flag_offset
+            "Num of Boolean Flags: {}, Boolean Flag Offset:{}",
+            self.num_boolean_flags, self.boolean_flag_offset
         )?;
+        if self.version >= 4 && cfg!(enable_parse_v4) {
+            writeln!(
+                f,
+                "Num of Int Flags: {}, Int Value Offset: {}",
+                self.num_int_flags, self.int_flag_offset
+            )?;
+        }
         Ok(())
     }
 }
@@ -57,6 +68,16 @@ impl fmt::Debug for FlagInfoHeader {
 impl FlagInfoHeader {
     /// Serialize to bytes
     pub fn into_bytes(&self) -> Vec<u8> {
+        match self.version {
+            1..=3 => self.to_bytes_v1(),
+            4 if cfg!(enable_parse_v4) => self.to_bytes_v4(),
+            // TODO(b/444251791): into_bytes should return a Result and panic
+            // if version is not supported.
+            _ => self.to_bytes_v1(),
+        }
+    }
+
+    fn to_bytes_v1(&self) -> Vec<u8> {
         let mut result = Vec::new();
         result.extend_from_slice(&self.version.to_le_bytes());
         let container_bytes = self.container.as_bytes();
@@ -64,28 +85,81 @@ impl FlagInfoHeader {
         result.extend_from_slice(container_bytes);
         result.extend_from_slice(&self.file_type.to_le_bytes());
         result.extend_from_slice(&self.file_size.to_le_bytes());
-        result.extend_from_slice(&self.num_flags.to_le_bytes());
+        result.extend_from_slice(&self.num_boolean_flags.to_le_bytes());
         result.extend_from_slice(&self.boolean_flag_offset.to_le_bytes());
+        result
+    }
+
+    fn to_bytes_v4(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        result.extend_from_slice(&self.version.to_le_bytes());
+        let container_bytes = self.container.as_bytes();
+        result.extend_from_slice(&(container_bytes.len() as u32).to_le_bytes());
+        result.extend_from_slice(container_bytes);
+        result.extend_from_slice(&self.file_type.to_le_bytes());
+        result.extend_from_slice(&self.file_size.to_le_bytes());
+        result.extend_from_slice(&self.num_boolean_flags.to_le_bytes());
+        result.extend_from_slice(&self.boolean_flag_offset.to_le_bytes());
+        result.extend_from_slice(&self.num_int_flags.to_le_bytes());
+        result.extend_from_slice(&self.int_flag_offset.to_le_bytes());
         result
     }
 
     /// Deserialize from bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, AconfigStorageError> {
         let mut head = 0;
-        let list = Self {
-            version: read_u32_from_bytes(bytes, &mut head)?,
-            container: read_str_from_bytes(bytes, &mut head)?,
-            file_type: read_u8_from_bytes(bytes, &mut head)?,
-            file_size: read_u32_from_bytes(bytes, &mut head)?,
-            num_flags: read_u32_from_bytes(bytes, &mut head)?,
-            boolean_flag_offset: read_u32_from_bytes(bytes, &mut head)?,
-        };
-        if list.file_type != StorageFileType::FlagInfo as u8 {
+        let version = read_u32_from_bytes(bytes, &mut head)?;
+        let header = match version {
+            1..=3 => Self::from_bytes_v1(bytes, version, &mut head),
+            4 if cfg!(enable_parse_v4) => Self::from_bytes_v4(bytes, version, &mut head),
+            _ => {
+                return Err(AconfigStorageError::HigherStorageFileVersion(anyhow!(
+                    "Cannot read storage file with a higher version of {} with lib version {}",
+                    version,
+                    MAX_SUPPORTED_FILE_VERSION
+                )))
+            }
+        }?;
+        if header.file_type != StorageFileType::FlagInfo as u8 {
             return Err(AconfigStorageError::BytesParseFail(anyhow!(
                 "binary file is not a flag info file"
             )));
         }
-        Ok(list)
+        Ok(header)
+    }
+
+    fn from_bytes_v1(
+        bytes: &[u8],
+        version: u32,
+        head: &mut usize,
+    ) -> Result<Self, AconfigStorageError> {
+        Ok(Self {
+            version,
+            container: read_str_from_bytes(bytes, head)?,
+            file_type: read_u8_from_bytes(bytes, head)?,
+            file_size: read_u32_from_bytes(bytes, head)?,
+            num_boolean_flags: read_u32_from_bytes(bytes, head)?,
+            boolean_flag_offset: read_u32_from_bytes(bytes, head)?,
+            num_int_flags: 0,
+            int_flag_offset: 0,
+        })
+    }
+
+    fn from_bytes_v4(
+        bytes: &[u8],
+        version: u32,
+        head: &mut usize,
+    ) -> Result<Self, AconfigStorageError> {
+        Ok(Self {
+            version,
+            container: read_str_from_bytes(bytes, head)?,
+            file_type: read_u8_from_bytes(bytes, head)?,
+            file_size: read_u32_from_bytes(bytes, head)?,
+            num_boolean_flags: read_u32_from_bytes(bytes, head)?,
+            boolean_flag_offset: read_u32_from_bytes(bytes, head)?,
+            num_int_flags: read_u32_from_bytes(bytes, head)?,
+            int_flag_offset: read_u32_from_bytes(bytes, head)?,
+        })
     }
 }
 
@@ -142,7 +216,8 @@ impl FlagInfoNode {
 #[derive(PartialEq, Serialize, Deserialize)]
 pub struct FlagInfoList {
     pub header: FlagInfoHeader,
-    pub nodes: Vec<FlagInfoNode>,
+    pub boolean_nodes: Vec<FlagInfoNode>,
+    pub int_nodes: Vec<FlagInfoNode>,
 }
 
 /// Implement debug print trait for flag info list
@@ -150,9 +225,15 @@ impl fmt::Debug for FlagInfoList {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Header:")?;
         write!(f, "{:?}", self.header)?;
-        writeln!(f, "Nodes:")?;
-        for node in self.nodes.iter() {
-            write!(f, "{:?}", node)?;
+        writeln!(f, "Boolean Flag Info:")?;
+        for node in self.boolean_nodes.iter() {
+            write!(f, "{node:?}")?;
+        }
+        if self.header.version >= 4 && cfg!(enable_parse_v4) {
+            writeln!(f, "Integer Flag Info:")?;
+            for node in self.int_nodes.iter() {
+                write!(f, "{node:?}")?;
+            }
         }
         Ok(())
     }
@@ -163,7 +244,8 @@ impl FlagInfoList {
     pub fn into_bytes(&self) -> Vec<u8> {
         [
             self.header.into_bytes(),
-            self.nodes.iter().map(|v| v.into_bytes()).collect::<Vec<_>>().concat(),
+            self.boolean_nodes.iter().map(|v| v.into_bytes()).collect::<Vec<_>>().concat(),
+            self.int_nodes.iter().map(|v| v.into_bytes()).collect::<Vec<_>>().concat(),
         ]
         .concat()
     }
@@ -171,22 +253,26 @@ impl FlagInfoList {
     /// Deserialize from bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, AconfigStorageError> {
         let header = FlagInfoHeader::from_bytes(bytes)?;
-        let num_flags = header.num_flags;
-        let mut head = header.into_bytes().len();
-        let nodes = (0..num_flags)
-            .map(|_| {
+        let mut boolean_info = Vec::new();
+        let mut int_info = Vec::new();
+
+        let mut head = header.boolean_flag_offset as usize;
+        for _ in 0..header.num_boolean_flags {
+            let node = FlagInfoNode::from_bytes(&bytes[head..])?;
+            head += node.into_bytes().len();
+            boolean_info.push(node);
+        }
+
+        if header.version >= 4 && cfg!(enable_parse_v4) {
+            let mut head = header.int_flag_offset as usize;
+            for _ in 0..header.num_int_flags {
                 let node = FlagInfoNode::from_bytes(&bytes[head..])?;
                 head += node.into_bytes().len();
-                Ok(node)
-            })
-            .collect::<Result<Vec<_>, AconfigStorageError>>()
-            .map_err(|errmsg| {
-                AconfigStorageError::BytesParseFail(anyhow!(
-                    "fail to parse flag info list: {}",
-                    errmsg
-                ))
-            })?;
-        let list = Self { header, nodes };
+                int_info.push(node);
+            }
+        }
+
+        let list = Self { header, boolean_nodes: boolean_info, int_nodes: int_info };
         Ok(list)
     }
 }
@@ -209,8 +295,14 @@ mod tests {
             assert!(reinterpreted_header.is_ok());
             assert_eq!(header, &reinterpreted_header.unwrap());
 
-            let nodes: &Vec<FlagInfoNode> = &flag_info_list.nodes;
-            for node in nodes.iter() {
+            let boolean_nodes: &Vec<FlagInfoNode> = &flag_info_list.boolean_nodes;
+            for node in boolean_nodes.iter() {
+                let reinterpreted_node = FlagInfoNode::from_bytes(&node.into_bytes()).unwrap();
+                assert_eq!(node, &reinterpreted_node);
+            }
+
+            let int_nodes = &flag_info_list.int_nodes;
+            for node in int_nodes.iter() {
                 let reinterpreted_node = FlagInfoNode::from_bytes(&node.into_bytes()).unwrap();
                 assert_eq!(node, &reinterpreted_node);
             }
@@ -240,9 +332,7 @@ mod tests {
         let mut flag_info_list = create_test_flag_info_list(DEFAULT_FILE_VERSION);
         flag_info_list.header.file_type = 123u8;
         let error = FlagInfoList::from_bytes(&flag_info_list.into_bytes()).unwrap_err();
-        assert_eq!(
-            format!("{:?}", error),
-            format!("BytesParseFail(binary file is not a flag info file)")
-        );
+        assert!(format!("{:?}", error)
+            .starts_with("BytesParseFail(binary file is not a flag info file"));
     }
 }

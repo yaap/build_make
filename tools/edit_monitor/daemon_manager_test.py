@@ -15,6 +15,7 @@
 """Unittests for DaemonManager."""
 
 import fcntl
+import hashlib
 import logging
 import multiprocessing
 import os
@@ -127,6 +128,55 @@ class DaemonManagerTest(unittest.TestCase):
 
     self.assert_run_simple_daemon_success()
     existing_dm.stop()
+
+  def test_start_success_with_chrome_target_repo(self):
+    dm = daemon_manager.DaemonManager(
+        TEST_BINARY_FILE,
+        daemon_target=simple_daemon,
+        daemon_args=(
+            tempfile.NamedTemporaryFile(dir=self.working_dir.name).name,),
+        target_repo='chrome',
+    )
+    dm.start()
+    dm.monitor_daemon(interval=1)
+
+    # Verify the expected pid file is created based on the chrome key.
+    hash_object = hashlib.sha256()
+    hash_object.update('edit_monitor_chrome'.encode('utf-8'))
+    expected_pid_file_path = pathlib.Path(self.working_dir.name).joinpath(
+        'edit_monitor', hash_object.hexdigest() + '.lock'
+    )
+    self.assertTrue(expected_pid_file_path.exists())
+
+    dm.stop()
+
+  def test_start_chrome_monitor_kills_existing_instance_from_different_binary(
+      self,
+  ):
+    # Calculate the pid file path for chrome.
+    hash_object = hashlib.sha256()
+    hash_object.update('edit_monitor_chrome'.encode('utf-8'))
+    chrome_pid_file_name = hash_object.hexdigest() + '.lock'
+
+    # First start an instance based on "binary_path_1"
+    # We use a fake process to simulate the existing instance to avoid
+    # the race condition that the same process (test process) is used for
+    # both instances.
+    p = self._create_fake_deamon_process(name=chrome_pid_file_name)
+
+    # Then start another instance based on "binary_path_2"
+    dm = daemon_manager.DaemonManager(
+        'binary_path_2',
+        daemon_target=long_running_daemon,
+        target_repo='chrome',
+    )
+    dm.start()
+
+    # Verify that the first instance is killed and the second instance is alive.
+    self.assertFalse(p.is_alive())
+    self.assertTrue(dm.daemon_process.is_alive())
+
+    dm.stop()
 
   def test_start_return_directly_if_block_sign_exists(self):
     # Creates the block sign.
@@ -502,6 +552,58 @@ class DaemonManagerTest(unittest.TestCase):
         error_type,
     )
 
+
+  def test_aggregate_and_send_metrics(self):
+    fake_cclient = FakeClearcutClient()
+    dm = daemon_manager.DaemonManager(
+        TEST_BINARY_FILE,
+        daemon_target=simple_daemon,
+        cclient=fake_cclient,
+    )
+    dm.total_memory_size = 1000
+    cpu_samples = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+    memory_samples = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    dm._aggregate_and_send_metrics(cpu_samples, memory_samples, 60)
+    sent_events = fake_cclient.get_sent_events()
+    self.assertEqual(len(sent_events), 1)
+    metrics_event = edit_event_pb2.EditEvent.FromString(
+        sent_events[0].source_extension
+    ).metrics_event
+    self.assertAlmostEqual(metrics_event.cpu_usage_p50, 5.5)
+    self.assertAlmostEqual(metrics_event.cpu_usage_p95, 9.55)
+    self.assertAlmostEqual(metrics_event.cpu_usage_max, 10.0)
+    self.assertAlmostEqual(metrics_event.memory_usage_p50, 550.0)
+    self.assertAlmostEqual(metrics_event.memory_usage_p95, 955.0)
+    self.assertAlmostEqual(metrics_event.memory_usage_max, 1000.0)
+    self.assertEqual(metrics_event.time_window_seconds, 60)
+
+  def test_get_percentile_linear_interpolation(self):
+    dm = daemon_manager.DaemonManager(TEST_BINARY_FILE)
+    samples = [1.0, 2.0, 3.0, 4.0, 5.0]
+    # P50 (median) of [1, 2, 3, 4, 5] should be 3.0
+    self.assertAlmostEqual(dm._get_percentile(samples, 0.5), 3.0)
+    # P95: index = 4 * 0.95 = 3.8. lower = 3, upper = 4.
+    # value = samples[3] * 0.2 + samples[4] * 0.8 = 4.0 * 0.2 + 5.0 * 0.8 = 0.8 + 4.0 = 4.8
+    self.assertAlmostEqual(dm._get_percentile(samples, 0.95), 4.8)
+
+  def test_get_percentile_empty_samples(self):
+    dm = daemon_manager.DaemonManager(TEST_BINARY_FILE)
+    self.assertEqual(dm._get_percentile([], 0.95), 0.0)
+
+  def test_get_percentile_single_sample(self):
+    dm = daemon_manager.DaemonManager(TEST_BINARY_FILE)
+    self.assertEqual(dm._get_percentile([10.0], 0.5), 10.0)
+    self.assertEqual(dm._get_percentile([10.0], 0.95), 10.0)
+
+  def test_aggregate_and_send_metrics_empty(self):
+    fake_cclient = FakeClearcutClient()
+    dm = daemon_manager.DaemonManager(
+        TEST_BINARY_FILE,
+        daemon_target=simple_daemon,
+        cclient=fake_cclient,
+    )
+    dm._aggregate_and_send_metrics([], [], 60)
+    self.assertEqual(len(fake_cclient.get_sent_events()), 0)
 
 class FakeClearcutClient:
 

@@ -1308,7 +1308,7 @@ func TestWalkTopDownBreadthFirst(t *testing.T) {
 		},
 		{
 			name:  "bin/bin1&lib/liba",
-			roots: []string{"bin/bin1.meta_lic","lib/liba.so.meta_lic"},
+			roots: []string{"bin/bin1.meta_lic", "lib/liba.so.meta_lic"},
 			expectedResult: []string{
 				"testdata/notice/bin/bin1.meta_lic",
 				"testdata/notice/lib/liba.so.meta_lic",

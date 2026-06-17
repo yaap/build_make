@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This class binds {@link List<ClassDependencyData>} and {@link List<JavaSourceData>} together as a
@@ -72,8 +73,13 @@ public class DependencyMapper {
                     new HashSet<>()).addAll(analysis.getClassDependencies());
 
             // compute crossModuleClassDependencies
-            mCrossModuleClassDependencies.computeIfAbsent(sourcePath, k ->
-                    new HashSet<>()).addAll(analysis.getCrossModuleClassDependencies());
+            mCrossModuleClassDependencies.computeIfAbsent(sourcePath, k -> new HashSet<>())
+                .addAll(
+                    analysis.getCrossModuleClassDependencies().stream()
+                        // Change "foo.bar.Baz" to "foo/bar/Baz.class"
+                        .map(element -> Utils.convertClassToFileBasedPath(element))
+                        .collect(Collectors.toList())
+                );
 
             // Compute constantRegistry
             analysis.getConstantsDefined().forEach(c ->

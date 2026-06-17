@@ -7,7 +7,7 @@ function commit_step_1_changes() {
             repo start "$FINAL_PLATFORM_CODENAME-SDK-Finalization-DryRun" ;
             git add -A . ;
             git commit -m "$FINAL_PLATFORM_CODENAME is now $FINAL_PLATFORM_SDK_VERSION" \
-                       -m "Ignore-AOSP-First: $FINAL_PLATFORM_CODENAME Finalization
+                       -m "Flag: EXEMPT Finalization
 Bug: $FINAL_BUG_ID
 Test: build";
 

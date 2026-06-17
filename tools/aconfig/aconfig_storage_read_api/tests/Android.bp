@@ -1,3 +1,7 @@
+package {
+    default_team: "trendy_team_android_core_experiments",
+}
+
 rust_test {
     name: "aconfig_storage_read_api.test.rust",
     srcs: [
@@ -59,5 +63,4 @@ android_test {
         "general-tests",
     ],
     test_config: "AconfigStorageReadFunctionalTest.xml",
-    team: "trendy_team_android_core_experiments",
 }

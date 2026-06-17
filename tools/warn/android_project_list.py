@@ -114,7 +114,7 @@ project_list = [
     create_pattern('system/core/debuggerd'),
     create_pattern('system/core/fastboot'),
     create_pattern('system/core/fingerprintd'),
-    create_pattern('system/core/fs_mgr'),
+    create_pattern('system/fs/fs_mgr'),
     create_pattern('system/core/gatekeeperd'),
     create_pattern('system/core/healthd'),
     create_pattern('system/core/include'),

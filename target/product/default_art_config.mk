@@ -68,6 +68,7 @@ PRODUCT_APEX_BOOT_JARS := \
     com.android.bt:framework-bluetooth \
     com.android.configinfrastructure:framework-configinfrastructure \
     com.android.conscrypt:conscrypt \
+    com.android.crashrecovery:framework-crashrecovery \
     com.android.devicelock:framework-devicelock \
     com.android.healthfitness:framework-healthfitness \
     com.android.i18n:core-icu4j \
@@ -85,22 +86,11 @@ PRODUCT_APEX_BOOT_JARS := \
     com.android.sdkext:framework-sdkextensions \
     com.android.tethering:framework-connectivity \
     com.android.tethering:framework-connectivity-t \
+    com.android.tethering:framework-connectivity-b \
     com.android.tethering:framework-tethering \
     com.android.uwb:framework-uwb \
     com.android.virt:framework-virtualization \
     com.android.wifi:framework-wifi \
-
-# When crashrecovery module is ready use apex jar
-# else put the platform jar in system
-ifeq ($(RELEASE_CRASHRECOVERY_MODULE),true)
-    PRODUCT_APEX_BOOT_JARS += \
-        com.android.crashrecovery:framework-crashrecovery \
-
-else
-    PRODUCT_BOOT_JARS += \
-        framework-platformcrashrecovery \
-
-endif
 
 # When we release ondeviceintelligence in NeuralNetworks module
 ifeq ($(RELEASE_ONDEVICE_INTELLIGENCE_MODULE),true)
@@ -116,7 +106,11 @@ endif
 # When we release NSC in Conscrypt.
 ifeq ($(RELEASE_CONSCRYPT_NSC),true)
     PRODUCT_APEX_BOOT_JARS += \
-    com.android.conscrypt:framework-conscrypt-nsc \
+        com.android.conscrypt:framework-conscrypt-nsc \
+
+else
+    PRODUCT_BOOT_JARS += \
+        framework-network-security-config \
 
 endif
 
@@ -147,14 +141,13 @@ ifneq (,$(RELEASE_RANGING_STACK))
     $(call soong_config_set,bootclasspath,release_ranging_stack,true)
 endif
 
-# Check if VCN should be built into the tethering module or not
-ifeq ($(RELEASE_MOVE_VCN_TO_MAINLINE),true)
+ifeq ($(RELEASE_TELECOM_MAINLINE_MODULE),true)
     PRODUCT_APEX_BOOT_JARS += \
-        com.android.tethering:framework-connectivity-b \
+        com.android.telephonycore:framework-telecom \
 
 else
     PRODUCT_BOOT_JARS += \
-        framework-connectivity-b \
+        framework-telecom \
 
 endif
 
@@ -168,6 +161,30 @@ else
 
 endif
 
+ifeq ($(RELEASE_WEBAPP_MODULE),true)
+    PRODUCT_APEX_BOOT_JARS += \
+        com.android.webapp:framework-webapp \
+
+endif
+
+ifeq ($(RELEASE_NPUMANAGER_MODULE),true)
+    PRODUCT_APEX_BOOT_JARS += \
+        com.android.npumanager:framework-npumanager \
+
+endif
+
+ifeq ($(RELEASE_UPROBESTATS_BRIDGE_SERVICE),true)
+    PRODUCT_APEX_BOOT_JARS += \
+        com.android.uprobestats:framework-uprobestats \
+
+endif
+
+ifeq ($(RELEASE_BETTERTOGETHER_MODULE),true)
+    PRODUCT_APEX_BOOT_JARS += \
+        com.android.bettertogether:framework-bettertogether \
+
+endif
+
 # List of system_server classpath jars delivered via apex.
 # Keep the list sorted by module names and then library names.
 # Note: For modules available in Q, DO NOT add new entries here.
@@ -177,18 +194,12 @@ PRODUCT_APEX_SYSTEM_SERVER_JARS := \
     com.android.appsearch:service-appsearch \
     com.android.art:service-art \
     com.android.configinfrastructure:service-configinfrastructure \
+    com.android.crashrecovery:service-crashrecovery \
     com.android.healthfitness:service-healthfitness \
     com.android.media:service-media-s \
     com.android.ondevicepersonalization:service-ondevicepersonalization \
     com.android.permission:service-permission \
     com.android.rkpd:service-rkp \
-
-# When we release crashrecovery module
-ifeq ($(RELEASE_CRASHRECOVERY_MODULE),true)
-  PRODUCT_APEX_SYSTEM_SERVER_JARS += \
-        com.android.crashrecovery:service-crashrecovery \
-
-endif
 
 # When we release ondeviceintelligence in NeuralNetworks module
 ifeq ($(RELEASE_ONDEVICE_INTELLIGENCE_MODULE),true)
@@ -197,14 +208,21 @@ ifeq ($(RELEASE_ONDEVICE_INTELLIGENCE_MODULE),true)
 
 endif
 
-ifeq ($(RELEASE_AVF_ENABLE_LLPVM_CHANGES),true)
-  PRODUCT_APEX_SYSTEM_SERVER_JARS += com.android.virt:service-virtualization
+# When we release npumanager module
+ifeq ($(RELEASE_NPUMANAGER_MODULE),true)
+    PRODUCT_APEX_SYSTEM_SERVER_JARS += \
+        com.android.npumanager:service-npumanager \
+
 endif
 
-# Use $(wildcard) to avoid referencing the profile in thin manifests that don't have the
-# art project.
-ifneq (,$(wildcard art))
-  PRODUCT_DEX_PREOPT_BOOT_IMAGE_PROFILE_LOCATION += art/build/boot/boot-image-profile.txt
+ifeq ($(RELEASE_TELECOM_MAINLINE_MODULE),true)
+    PRODUCT_APEX_SYSTEM_SERVER_JARS += \
+        com.android.telephonycore:service-telecom \
+
+endif
+
+ifeq ($(RELEASE_AVF_ENABLE_LLPVM_CHANGES),true)
+  PRODUCT_APEX_SYSTEM_SERVER_JARS += com.android.virt:service-virtualization
 endif
 
 # List of jars on the platform that system_server loads dynamically using separate classloaders.
@@ -239,9 +257,16 @@ ifneq (,$(RELEASE_RANGING_STACK))
         com.android.uwb:service-ranging
 endif
 
-ifeq ($(RELEASE_UPROBESTATS_SERVICE),true)
+ifeq ($(RELEASE_UPROBESTATS_BRIDGE_SERVICE),true)
     PRODUCT_APEX_STANDALONE_SYSTEM_SERVER_JARS += \
-        com.android.uprobestats:service-uprobestats
+        com.android.uprobestats:service-uprobestats-bridge
+endif
+
+ifeq ($(RELEASE_BETTERTOGETHER_MODULE),true)
+    PRODUCT_APEX_STANDALONE_SYSTEM_SERVER_JARS += \
+        com.android.bettertogether:service-device-to-device
+    PRODUCT_APEX_SYSTEM_SERVER_JARS += \
+        com.android.bettertogether:service-device-to-device
 endif
 
 # Overrides the (apex, jar) pairs above when determining the on-device location. The format is:
@@ -256,6 +281,6 @@ PRODUCT_CONFIGURED_JAR_LOCATION_OVERRIDES := \
 PRODUCT_USES_DEFAULT_ART_CONFIG := true
 PRODUCT_SYSTEM_PROPERTIES += \
     dalvik.vm.image-dex2oat-Xms=64m \
-    dalvik.vm.image-dex2oat-Xmx=64m \
+    dalvik.vm.image-dex2oat-Xmx=512m \
     dalvik.vm.dex2oat-Xms=64m \
     dalvik.vm.dex2oat-Xmx=512m \

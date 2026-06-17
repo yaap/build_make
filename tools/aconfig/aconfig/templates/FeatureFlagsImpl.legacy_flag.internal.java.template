@@ -3,8 +3,8 @@ package {package_name};
 import android.provider.DeviceConfig;
 {{ -endif }}  {#- end of runtime_lookup_required#}
 /** @hide */
-public final class FeatureFlagsImpl implements FeatureFlags \{
-{{ -for flag in flag_elements }}
+{{ if preserve_impl_interface }}public {{ endif }}final class FeatureFlagsImpl implements FeatureFlags \{
+{{ -for flag in overridable_flag_elements }}
     @Override
 {{ -if not library_exported }}
     @com.android.aconfig.annotations.AconfigFlagAccessor

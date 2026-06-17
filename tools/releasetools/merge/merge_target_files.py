@@ -254,7 +254,6 @@ def generate_missing_images(target_files_dir):
   if OPTIONS.avb_resolve_rollback_index_location_conflict:
     add_img_args.append('--avb_resolve_rollback_index_location_conflict')
   add_img_args.append(target_files_dir)
-
   add_img_to_target_files.main(add_img_args)
 
 

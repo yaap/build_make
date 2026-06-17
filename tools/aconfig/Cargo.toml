@@ -9,6 +9,7 @@ members = [
     "aconfig_storage_write_api",
     "aflags",
     "convert_finalized_flags",
+    "finalize_non_api_flags",
     "exported_flag_check",
 ]
 

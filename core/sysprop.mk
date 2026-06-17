@@ -72,6 +72,7 @@ define generate-common-build-props
     echo "ro.$(1).build.date.utc=`$(DATE_FROM_FILE) +%s`" >> $(2);\
     echo "ro.$(1).build.fingerprint?=$${BuildFingerprint:-$(BUILD_FINGERPRINT_FROM_FILE)}" >> $(2);\
     echo "ro.$(1).build.id?=$(BUILD_ID)" >> $(2);\
+    echo "ro.$(1).build.uuid?=$(BUILD_UUID_FROM_FILE)" >> $(2);\
     echo "ro.$(1).build.tags?=$(BUILD_VERSION_TAGS)" >> $(2);\
     echo "ro.$(1).build.type=$(TARGET_BUILD_VARIANT)" >> $(2);\
     echo "ro.$(1).build.version.incremental=$(BUILD_NUMBER_FROM_FILE)" >> $(2);\

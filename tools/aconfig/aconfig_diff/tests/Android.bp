@@ -1,0 +1,233 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
+}
+
+// -------------------
+// DEFAULTS
+// -------------------
+
+java_defaults {
+    name: "aconfig_diff_test_app_defaults",
+    sdk_version: "current",
+    min_sdk_version: "30",
+    manifest: "src/AndroidManifest.xml",
+    dex_preopt: {
+        enabled: false,
+    },
+}
+
+java_defaults {
+    name: "aconfig_diff_test_no_opt",
+    optimize: {
+        enabled: false,
+    },
+}
+
+java_defaults {
+    name: "aconfig_diff_test_shrink_opt",
+    optimize: {
+        enabled: true,
+        shrink: true,
+        optimize: false,
+        obfuscate: false,
+    },
+}
+
+java_defaults {
+    name: "aconfig_diff_test_full_opt",
+    optimize: {
+        enabled: true,
+        shrink: true,
+        optimize: true,
+        shrink_resources: true,
+        obfuscate: false,
+    },
+}
+
+// -------------------
+// BASE APPS
+// -------------------
+
+android_app {
+    name: "aconfig_diff_test_base_no_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_no_opt",
+    ],
+    srcs: ["src_base/com/android/aconfig/diff/test/Base.java"],
+}
+
+android_app {
+    name: "aconfig_diff_test_base_shrink_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_shrink_opt",
+    ],
+    srcs: ["src_base/com/android/aconfig/diff/test/Base.java"],
+}
+
+android_app {
+    name: "aconfig_diff_test_base_full_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_full_opt",
+    ],
+    srcs: ["src_base/com/android/aconfig/diff/test/Base.java"],
+}
+
+// Whitespace-changed apps
+android_app {
+    name: "aconfig_diff_test_whitespace_no_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_no_opt",
+    ],
+    srcs: ["src_whitespace/com/android/aconfig/diff/test/Base.java"],
+}
+
+android_app {
+    name: "aconfig_diff_test_whitespace_shrink_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_shrink_opt",
+    ],
+    srcs: ["src_whitespace/com/android/aconfig/diff/test/Base.java"],
+}
+
+android_app {
+    name: "aconfig_diff_test_whitespace_full_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_full_opt",
+    ],
+    srcs: ["src_whitespace/com/android/aconfig/diff/test/Base.java"],
+}
+
+// RO flagged-branch conditional apps
+android_app {
+    name: "aconfig_diff_test_branch_ro_no_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_no_opt",
+    ],
+    srcs: ["src_branch_ro/com/android/aconfig/diff/test/Base.java"],
+    static_libs: ["aconfig_diff_test_flags_lib_ro"],
+}
+
+android_app {
+    name: "aconfig_diff_test_branch_ro_shrink_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_shrink_opt",
+    ],
+    srcs: ["src_branch_ro/com/android/aconfig/diff/test/Base.java"],
+    static_libs: ["aconfig_diff_test_flags_lib_ro"],
+}
+
+android_app {
+    name: "aconfig_diff_test_branch_ro_full_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_full_opt",
+    ],
+    srcs: ["src_branch_ro/com/android/aconfig/diff/test/Base.java"],
+    static_libs: ["aconfig_diff_test_flags_lib_ro"],
+}
+
+// RW flagged-branch conditional apps
+android_app {
+    name: "aconfig_diff_test_branch_rw_no_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_no_opt",
+    ],
+    srcs: ["src_branch_rw/com/android/aconfig/diff/test/Base.java"],
+    static_libs: ["aconfig_diff_test_flags_lib_rw"],
+}
+
+android_app {
+    name: "aconfig_diff_test_branch_rw_shrink_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_shrink_opt",
+    ],
+    srcs: ["src_branch_rw/com/android/aconfig/diff/test/Base.java"],
+    static_libs: ["aconfig_diff_test_flags_lib_rw"],
+}
+
+android_app {
+    name: "aconfig_diff_test_branch_rw_full_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_full_opt",
+    ],
+    srcs: ["src_branch_rw/com/android/aconfig/diff/test/Base.java"],
+    static_libs: ["aconfig_diff_test_flags_lib_rw"],
+}
+
+// RO flagged new class usage apps
+android_app {
+    name: "aconfig_diff_test_class_ro_no_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_no_opt",
+    ],
+    srcs: [
+        "src_class_ro/com/android/aconfig/diff/test/Base.java",
+        "src/com/android/aconfig/diff/test/NewClass.java",
+    ],
+    static_libs: ["aconfig_diff_test_flags_lib_ro"],
+}
+
+android_app {
+    name: "aconfig_diff_test_class_ro_shrink_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_shrink_opt",
+    ],
+    srcs: [
+        "src_class_ro/com/android/aconfig/diff/test/Base.java",
+        "src/com/android/aconfig/diff/test/NewClass.java",
+    ],
+    static_libs: ["aconfig_diff_test_flags_lib_ro"],
+}
+
+android_app {
+    name: "aconfig_diff_test_class_ro_full_opt",
+    defaults: [
+        "aconfig_diff_test_app_defaults",
+        "aconfig_diff_test_full_opt",
+    ],
+    srcs: [
+        "src_class_ro/com/android/aconfig/diff/test/Base.java",
+        "src/com/android/aconfig/diff/test/NewClass.java",
+    ],
+    static_libs: ["aconfig_diff_test_flags_lib_ro"],
+}
+
+java_test_host {
+    name: "aconfig_diff_test",
+    srcs: ["src/com/android/aconfig/diff/test/AconfigDiffHostTest.java"],
+    libs: ["tradefed"],
+    device_common_data: [
+        ":aconfig_diff_test_base_no_opt",
+        ":aconfig_diff_test_base_shrink_opt",
+        ":aconfig_diff_test_base_full_opt",
+        ":aconfig_diff_test_whitespace_no_opt",
+        ":aconfig_diff_test_whitespace_shrink_opt",
+        ":aconfig_diff_test_whitespace_full_opt",
+        ":aconfig_diff_test_branch_ro_no_opt",
+        ":aconfig_diff_test_branch_ro_shrink_opt",
+        ":aconfig_diff_test_branch_ro_full_opt",
+        ":aconfig_diff_test_branch_rw_no_opt",
+        ":aconfig_diff_test_branch_rw_shrink_opt",
+        ":aconfig_diff_test_branch_rw_full_opt",
+        ":aconfig_diff_test_class_ro_no_opt",
+        ":aconfig_diff_test_class_ro_shrink_opt",
+        ":aconfig_diff_test_class_ro_full_opt",
+    ],
+    data_native_bins: ["dexdump"],
+    test_config: "aconfig_diff_test.xml",
+    test_suites: ["general-tests"],
+}

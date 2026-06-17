@@ -38,16 +38,28 @@ function finalize_vintf_resources() {
         }" "$top/build/soong/android/vendor_api_levels.go"
     fi
 
+    # bump the `next` RELEASE_BOARD_API_LEVEL
+    # `next` is an alias that targets the release config that we need to modify,
+    local next_alias_file="$top/vendor/google_shared/build/release/release_config_map.textproto"
+    local next_target=$(grep -A 1 'name: "next"' $next_alias_file | grep 'target:' | cut -d'"' -f2)
+    local next_target_file="$top/vendor/google_shared/build/release/flag_values/$next_target/RELEASE_BOARD_API_LEVEL.textproto"
+
+    echo "name: \"RELEASE_BOARD_API_LEVEL\"
+value: {
+  string_value: \"$FINAL_BOARD_API_LEVEL\"
+}" > "$next_target_file"
+
     # system/sepolicy
     "$top/system/sepolicy/tools/finalize-vintf-resources.sh" "$top" "$FINAL_BOARD_API_LEVEL"
 
+    # AIDL API Freeze
     local aidl_m="$top/build/soong/soong_ui.bash --make-mode"
     AIDL_TRANSITIVE_FREEZE=true $aidl_m aidl-freeze-api create_reference_dumps
 
     finalize_compat_matrix $build_test_only
 
+    # Generate LLNDK ABI dumps
     if ! [ "$build_test_only" = "true" ]; then
-        # Generate LLNDK ABI dumps
         # This command depends on ANDROID_BUILD_TOP
         "$ANDROID_HOST_OUT/bin/create_reference_dumps" -release "$TARGET_RELEASE" --build-variant "$TARGET_BUILD_VARIANT" --lib-variant LLNDK
     fi

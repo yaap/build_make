@@ -76,6 +76,7 @@ cc_genrule {
         ":libext2fs",
         ":libext4_utils",
         ":libfec",
+        ":libfec_rs",
         ":libhidl-gen-utils",
         ":libhidlmetadata",
         ":libicui18n",
@@ -139,7 +140,6 @@ cc_genrule {
         ":deapexer",
         ":debugfs_static",
         ":delta_generator",
-        ":desktop_trusty_signing_tool",
         ":e2fsck",
         ":e2fsdroid",
         ":fc_sort",
@@ -166,7 +166,6 @@ cc_genrule {
         ":mkf2fsuserimg",
         ":mkfs.erofs",
         ":mksquashfs",
-        ":mksquashfsimage",
         ":mkuserimg_mke2fs",
         ":ota_extractor",
         ":ota_from_target_files",
@@ -184,6 +183,7 @@ cc_genrule {
         ":soong_zip",
         ":toybox",
         ":treble_labeling_tests",
+        ":trusty_vm_signing_tool",
         ":tune2fs",
         ":unpack_bootimg",
         ":update_device",
@@ -202,7 +202,15 @@ cc_genrule {
         ],
         default: [],
     }) + select(soong_config_variable("otatools", "use_inject_signed_artifacts"), {
-        true: [":inject_signed_artifacts"],
+        true: [
+            ":inject_signed_artifacts",
+        ],
+        default: [],
+    }) + select(soong_config_variable("otatools", "use_otatools_recovery_signing_tools"), {
+        true: [
+            ":sign_recovery_image",
+            ":signing_utils",
+        ],
         default: [],
     }),
     out: ["otatools_package_dep_bins.zip"],

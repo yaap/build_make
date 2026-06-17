@@ -162,8 +162,7 @@ public class PackageTable {
                 case 3:
                     return fromBytesV3(reader);
                 default:
-                    // Do we want to throw here?
-                    return new Node();
+                    throw new AconfigStorageException("Unknown version: " + version);
             }
         }
 

@@ -1,0 +1,12 @@
+package com.android.aconfig.test;
+
+/**
+ * @deprecated Use {@link ExportedFlags} instead.
+ */
+@Deprecated
+public interface FeatureFlags {
+
+    boolean disabledRwExported();
+    boolean enabledFixedRoExported();
+    boolean enabledRoExported();
+}

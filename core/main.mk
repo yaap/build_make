@@ -681,7 +681,7 @@ endef
 # Scan all modules in general-tests, device-tests and other selected suites and
 # flatten the shared library dependencies.
 define update-host-shared-libs-deps-for-suites
-$(foreach suite,general-tests device-tests vts tvts art-host-tests host-unit-tests camera-hal-tests,\
+$(foreach suite,general-tests device-tests vts tvts sdvts art-host-tests host-unit-tests camera-hal-tests,\
   $(eval COMPATIBILITY.$(suite).SYMLINKS :=)\
   $(eval COMPATIBILITY.$(suite).HOST_SHARED_LIBRARY.FILES :=)\
   $(foreach m,$(COMPATIBILITY.$(suite).MODULES),\
@@ -1077,10 +1077,6 @@ else ifdef FULL_BUILD
         $(if $(or $(ALL_MODULES.$(m).PATH),$(call get-modules-for-2nd-arch,TARGET,$(m))),,$(m)))
       $(call maybe-print-list-and-error,$(filter-out $(_allow_list),$(_nonexistent_modules)),\
         $(INTERNAL_PRODUCT) includes non-existent modules in PRODUCT_PACKAGES)
-      # TODO(b/182105280): Consider re-enabling this check when the ART modules
-      # have been cleaned up from the allowed_list in target/product/generic.mk.
-      #$(call maybe-print-list-and-error,$(filter-out $(_nonexistent_modules),$(_allow_list)),\
-      #  $(INTERNAL_PRODUCT) includes redundant allow list entries for non-existent PRODUCT_PACKAGES)
     endif
 
     # Check to ensure that all modules in PRODUCT_HOST_PACKAGES exist
@@ -1659,11 +1655,6 @@ tidy_only:
 ndk: $(SOONG_OUT_DIR)/ndk.timestamp
 .PHONY: ndk
 
-# Checks that allowed_deps.txt remains up to date
-ifneq ($(UNSAFE_DISABLE_APEX_ALLOWED_DEPS_CHECK),true)
-  droidcore: ${APEX_ALLOWED_DEPS_CHECK}
-endif
-
 $(info [$(include_makefiles_total)/$(include_makefiles_total)] finishing Make packaging rules: Checking licensing and SBOM)
 
 # Create a license metadata rule per module. Could happen in base_rules.mk or
@@ -1858,7 +1849,7 @@ $(SOONG_OUT_DIR)/compliance-metadata/$(TARGET_PRODUCT)/make_metadata.csv:
 	  $(eval _static_libs := $(if $(_is_soong_module),,$(ALL_INSTALLED_FILES.$f.STATIC_LIBRARIES))) \
 	  $(eval _whole_static_libs := $(if $(_is_soong_module),,$(ALL_INSTALLED_FILES.$f.WHOLE_STATIC_LIBRARIES))) \
 	  $(eval _license_text := $(if $(_is_non_module.$(_build_output_path)),$(ALL_NON_MODULES.$(_build_output_path).NOTICES),\
-	                          $(if $(_is_partition_compat_symlink),build/soong/licenses/LICENSE))) \
+	                          $(if $(_is_partition_compat_symlink),build/soong/licenses/LICENSE,$(ALL_MODULES.$(_module_name).NOTICES)))) \
 	  echo '$(_build_output_path),$(_module_path),$(_is_soong_module),$(_is_prebuilt_make_module),$(_product_copy_files),$(_kernel_module_copy_files),$(_is_platform_generated),$(_static_libs),$(_whole_static_libs),$(_license_text)' >> $@; \
 	)
 
@@ -1882,6 +1873,80 @@ $(SOONG_OUT_DIR)/compliance-metadata/$(TARGET_PRODUCT)/make_modules.csv:
 
 $(SOONG_OUT_DIR)/compliance-metadata/$(TARGET_PRODUCT)/installed_files.stamp: $(installed_files)
 	touch $@
+
+# -----------------------------------------------------------------
+# ==============================================================================
+# Soong API Integration (Analysis-Time)
+# ==============================================================================
+_MAKE_METADATA_JSON := $(SOONG_OUT_DIR)/soong_api/$(TARGET_PRODUCT)/make-modules.json
+_SOONG_API_ZIP := $(SOONG_OUT_DIR)/soong_api/$(TARGET_PRODUCT)/soong_api.zip
+
+# To populate the JSON 'static_libs' field, we merge two variables:
+# STATIC_LIBS (used by native modules) and LOCAL_STATIC_LIBRARIES (used by Java modules).
+define add-make-module-to-json
+  $(call add_json_map_anon) \
+    $(call add_json_str, name, $(1)) \
+    $(call add_json_str, type, $(sort $(ALL_MODULES.$(1).MAKE_MODULE_TYPE))) \
+    $(call add_json_list, path, $(sort $(ALL_MODULES.$(1).PATH))) \
+    $(if $(strip $(ALL_MODULES.$(1).INSTALLED)), \
+      $(call add_json_list, install_files, $(sort $(ALL_MODULES.$(1).INSTALLED)))) \
+    $(call add_json_bool, is_make_module, true) \
+    $(if $(strip $(ALL_MODULES.$(1).BUILT)), \
+      $(call add_json_list, built_files, $(sort $(ALL_MODULES.$(1).BUILT)))) \
+    $(if $(strip $(ALL_MODULES.$(1).STATIC_LIBS) $(ALL_MODULES.$(1).LOCAL_STATIC_LIBRARIES)), \
+      $(call add_json_list, static_libs, $(sort $(ALL_MODULES.$(1).STATIC_LIBS) $(ALL_MODULES.$(1).LOCAL_STATIC_LIBRARIES)))) \
+    $(if $(strip $(ALL_MODULES.$(1).WHOLE_STATIC_LIBS)), \
+      $(call add_json_list, whole_static_libs, $(sort $(ALL_MODULES.$(1).WHOLE_STATIC_LIBS)))) \
+    $(if $(strip $(ALL_MODULES.$(1).LICENSE_KINDS)), \
+      $(call add_json_list, license_kinds, $(sort $(ALL_MODULES.$(1).LICENSE_KINDS)))) \
+    $(if $(strip $(ALL_MODULES.$(1).LICENSE_CONDITIONS)), \
+      $(call add_json_list, license_kind_conditions, $(sort $(ALL_MODULES.$(1).LICENSE_CONDITIONS)))) \
+    $(if $(strip $(ALL_MODULES.$(1).NOTICES)), \
+      $(call add_json_list, license_text, $(sort $(ALL_MODULES.$(1).NOTICES)))) \
+  $(call end_json_map)
+endef
+
+# Preparing make module json content.
+_make_modules := $(strip $(foreach m,$(ALL_MODULES),$(if $(ALL_MODULES.$(m).IS_SOONG_MODULE),,$(m))))
+
+_json_contents := [$(newline)
+_json_indent := $(4space)
+
+ifneq ($(_make_modules),)
+  $(foreach m,$(_make_modules),$(call add-make-module-to-json,$(m)))
+endif
+
+_json_contents := $(subst $(comma)$(newline)__SV_END,$(newline),$(_json_contents)__SV_END)]$(newline)
+
+# Write it to file
+_make_metadata_json := \
+  $(shell mkdir -p $(dir $(_MAKE_METADATA_JSON))) \
+  $(file >$(_MAKE_METADATA_JSON),$(_json_contents))
+
+# Merge and update soong_api.zip IN-PLACE
+_make_metadata_soong_integration := \
+  $(shell \
+    if [ ! -f "$(_SOONG_API_ZIP)" ]; then \
+      echo "[SNAPI] ERROR: Soong API Zip not found at $(_SOONG_API_ZIP)"; \
+      exit 1; \
+    fi; \
+    \
+    if [ ! -f "$(_MAKE_METADATA_JSON)" ]; then \
+      echo "[SNAPI] ERROR: Make metadata JSON not found at $(_MAKE_METADATA_JSON)"; \
+      exit 1; \
+    fi; \
+    \
+    zip -qj "$(_SOONG_API_ZIP)" "$(_MAKE_METADATA_JSON)" \
+  )
+
+ifneq ($(.SHELLSTATUS),0)
+  $(error $(_make_metadata_soong_integration))
+endif
+
+# ==============================================================================
+# End Soong API Integration (Analysis-Time)
+# ==============================================================================
+# -----------------------------------------------------------------
 
 # Remove the always_dirty_file.txt whenever the makefile is evaluated
 $(shell rm -f $(PRODUCT_OUT)/always_dirty_file.txt)

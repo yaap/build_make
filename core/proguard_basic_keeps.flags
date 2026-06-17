@@ -12,12 +12,6 @@
 # simplifying incremental development.
 -keepattributes Exceptions
 
-# For enumeration classes, see http://proguard.sourceforge.net/manual/examples.html#enumerations
--keepclassmembers enum * {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
-}
-
 # For native methods, see http://proguard.sourceforge.net/manual/examples.html#native
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
@@ -31,12 +25,14 @@
 }
 
 # Keep serializable classes and necessary members for serializable classes
-# Copied from the ProGuard manual at http://proguard.sourceforge.net.
+# Originally copied from the ProGuard manual at http://proguard.sourceforge.net,
+# with the following modification(s):
+#   - Exclude synthetics from the kept fields.
 -keepnames class * implements java.io.Serializable
 -keepclassmembers class * implements java.io.Serializable {
     static final long serialVersionUID;
     private static final java.io.ObjectStreamField[] serialPersistentFields;
-    !static !transient <fields>;
+    !static !transient !synthetic <fields>;
     private void writeObject(java.io.ObjectOutputStream);
     private void readObject(java.io.ObjectInputStream);
     java.lang.Object writeReplace();

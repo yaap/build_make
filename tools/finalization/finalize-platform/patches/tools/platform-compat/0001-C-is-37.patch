@@ -1,0 +1,31 @@
+From 26682dfb70fe87d5d7b6ed00e833fb273ebd53ad Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 29 Jan 2026 12:26:59 +0000
+Subject: [PATCH] C is 37
+
+It's not a fifty-four-year-old programming language; it's not an
+element common to all known life; it's the next Android release!
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: Ibf6dc0b061147f80615fc3b71c7dcddafe183eb7
+---
+ java/com/android/class2nonsdklist/Class2NonSdkList.java | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/java/com/android/class2nonsdklist/Class2NonSdkList.java b/java/com/android/class2nonsdklist/Class2NonSdkList.java
+index 7e9c7769b8b..3c4a0632b12 100644
+--- a/java/com/android/class2nonsdklist/Class2NonSdkList.java
++++ b/java/com/android/class2nonsdklist/Class2NonSdkList.java
+@@ -91,6 +91,7 @@ public class Class2NonSdkList {
+         map.put(34, FLAG_UNSUPPORTED);
+         map.put(35, FLAG_UNSUPPORTED);
+         map.put(36, FLAG_UNSUPPORTED);
++        map.put(37, FLAG_UNSUPPORTED);
+         map.put(10000, FLAG_UNSUPPORTED); // VMRuntime.SDK_VERSION_CUR_DEVELOPMENT
+         TARGET_SDK_TO_LIST_MAP = Collections.unmodifiableMap(map);
+     }
+-- 
+2.53.0.rc1.225.gd81095ad13-goog
+

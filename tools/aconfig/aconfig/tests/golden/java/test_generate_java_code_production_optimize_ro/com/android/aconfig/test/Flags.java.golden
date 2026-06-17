@@ -1,0 +1,77 @@
+package com.android.aconfig.test;
+
+
+/** @hide */
+public final class Flags {
+
+    /** @hide */
+    public static final String FLAG_DISABLED_RO = "com.android.aconfig.test.disabled_ro";
+    /** @hide */
+    public static final String FLAG_DISABLED_RW = "com.android.aconfig.test.disabled_rw";
+    /** @hide */
+    public static final String FLAG_DISABLED_RW_EXPORTED = "com.android.aconfig.test.disabled_rw_exported";
+    /** @hide */
+    public static final String FLAG_DISABLED_RW_IN_OTHER_NAMESPACE = "com.android.aconfig.test.disabled_rw_in_other_namespace";
+    /** @hide */
+    public static final String FLAG_ENABLED_FIXED_RO = "com.android.aconfig.test.enabled_fixed_ro";
+    /** @hide */
+    public static final String FLAG_ENABLED_FIXED_RO_EXPORTED = "com.android.aconfig.test.enabled_fixed_ro_exported";
+    /** @hide */
+    public static final String FLAG_ENABLED_RO = "com.android.aconfig.test.enabled_ro";
+    /** @hide */
+    public static final String FLAG_ENABLED_RO_EXPORTED = "com.android.aconfig.test.enabled_ro_exported";
+    /** @hide */
+    public static final String FLAG_ENABLED_RW = "com.android.aconfig.test.enabled_rw";
+
+    @com.android.aconfig.annotations.AssumeFalseForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean disabledRo() {
+        return false;
+    }
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean disabledRw() {
+        return FEATURE_FLAGS.disabledRw();
+    }
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean disabledRwExported() {
+        return FEATURE_FLAGS.disabledRwExported();
+    }
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean disabledRwInOtherNamespace() {
+        return FEATURE_FLAGS.disabledRwInOtherNamespace();
+    }
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean enabledFixedRo() {
+        return true;
+    }
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean enabledFixedRoExported() {
+        return true;
+    }
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean enabledRo() {
+        return true;
+    }
+
+    @com.android.aconfig.annotations.AssumeTrueForR8
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean enabledRoExported() {
+        return true;
+    }
+
+    @com.android.aconfig.annotations.AconfigFlagAccessor
+    public static boolean enabledRw() {
+        return FEATURE_FLAGS.enabledRw();
+    }
+
+    private static FeatureFlags FEATURE_FLAGS = new FeatureFlagsImpl();
+}

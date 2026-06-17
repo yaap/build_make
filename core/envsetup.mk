@@ -352,8 +352,7 @@ include $(BUILD_SYSTEM)/product_config.mk
 
 build_variant := $(filter-out eng user userdebug,$(TARGET_BUILD_VARIANT))
 ifneq ($(build_variant)-$(words $(TARGET_BUILD_VARIANT)),-1)
-$(warning bad TARGET_BUILD_VARIANT: $(TARGET_BUILD_VARIANT))
-$(error must be empty or one of: eng user userdebug)
+$(error bad TARGET_BUILD_VARIANT: $(TARGET_BUILD_VARIANT). Must be empty or one of: eng user userdebug)
 endif
 
 SDK_HOST_ARCH := x86
@@ -1075,5 +1074,7 @@ endif
 -include test/wvts/tools/build/config.mk
 # DTS-specific config.
 -include test/dts/tools/build/config.mk
+# CHDTS-specific config.
+-include system/chre/java/test/chdts/tools/build/config.mk
 # Include the google-specific config
 -include vendor/google/build/config.mk

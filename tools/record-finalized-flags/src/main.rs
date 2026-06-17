@@ -47,6 +47,9 @@ struct Cli {
     finalized_flags: PathBuf,
 
     #[arg(long)]
+    non_api_finalized_flags: Option<PathBuf>,
+
+    #[arg(long)]
     flag_report: PathBuf,
 }
 
@@ -54,7 +57,13 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     let file = File::open(args.finalized_flags)?;
-    let already_finalized_flags = finalized_flags::read_finalized_flags(file)?;
+    let mut already_finalized_flags = finalized_flags::read_finalized_flags(file)?;
+
+    if let Some(path) = args.non_api_finalized_flags {
+        let file = File::open(path)?;
+        let already_finalized_non_api_flags = finalized_flags::read_finalized_flags(file)?;
+        already_finalized_flags.extend(already_finalized_non_api_flags);
+    }
 
     let file = File::open(args.flag_report)?;
     let newly_finalized_flags = flag_report::read_and_filter_flag_report(file)?;

@@ -138,6 +138,11 @@ class SignApk {
      */
     private static final short ALIGNMENT_ZIP_EXTRA_DATA_FIELD_MIN_SIZE_BYTES = 6;
 
+    /**
+     * Alignment (in bytes) for the size of the output file when --align-file-size is passed.
+     */
+    private static final int ALIGNMENT_FILE_SIZE = 4096;
+
     // bitmasks for which hash algorithms we need the manifest to include.
     private static final int USE_SHA1 = 1;
     private static final int USE_SHA256 = 2;
@@ -1063,6 +1068,7 @@ class SignApk {
                            "[-loadPrivateKeysFromKeyStore <keyStoreName>]" +
                            "[-keyStorePin <pin>]" +
                            "[--min-sdk-version <n>] " +
+                           "[--disable-v1] " +
                            "[--disable-v2] " +
                            "[--enable-v4] " +
                            "publickey.x509[.pem] privatekey.pk8 " +
@@ -1090,6 +1096,7 @@ class SignApk {
         int alignment = 4;
         boolean alignFileSize = false;
         Integer minSdkVersionOverride = null;
+        boolean signUsingApkSignatureSchemeV1 = true;
         boolean signUsingApkSignatureSchemeV2 = true;
         boolean signUsingApkSignatureSchemeV4 = false;
         SigningCertificateLineage certLineage = null;
@@ -1138,6 +1145,9 @@ class SignApk {
                     throw new IllegalArgumentException(
                             "--min-sdk-version must be a decimal number: " + minSdkVersionString);
                 }
+                ++argstart;
+            } else if ("--disable-v1".equals(args[argstart])) {
+                signUsingApkSignatureSchemeV1 = false;
                 ++argstart;
             } else if ("--disable-v2".equals(args[argstart])) {
                 signUsingApkSignatureSchemeV2 = false;
@@ -1256,7 +1266,7 @@ class SignApk {
 
                 DefaultApkSignerEngine.Builder builder = new DefaultApkSignerEngine.Builder(
                     createSignerConfigs(privateKey, publicKey), minSdkVersion)
-                    .setV1SigningEnabled(true)
+                    .setV1SigningEnabled(signUsingApkSignatureSchemeV1)
                     .setV2SigningEnabled(signUsingApkSignatureSchemeV2)
                     .setOtherSignersSignaturesPreserved(false)
                     .setCreatedBy("1.0 (Android SignApk)");
@@ -1341,7 +1351,7 @@ class SignApk {
                         addV2SignatureRequest.done();
 
                         // Exit the loop if we don't need to align the file size
-                        if (!alignFileSize || alignment < 2) {
+                        if (!alignFileSize) {
                             break;
                         }
 
@@ -1352,11 +1362,11 @@ class SignApk {
                             fileSize += buf.remaining();
                         }
                         // Exit the loop because the file size is aligned.
-                        if (fileSize % alignment == 0) {
+                        if (fileSize % ALIGNMENT_FILE_SIZE == 0) {
                             break;
                         }
                         // Pad EOCD comment to align the file size.
-                        int commentLen = alignment - (int)(fileSize % alignment);
+                        int commentLen = ALIGNMENT_FILE_SIZE - (int)(fileSize % ALIGNMENT_FILE_SIZE);
                         modifiedEocd = ByteBuffer.allocate(eocd.remaining() + commentLen);
                         modifiedEocd.put(eocd);
                         modifiedEocd.rewind();

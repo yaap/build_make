@@ -75,7 +75,7 @@ public class PlatformAconfigPackageInternal {
         if (pNode.hasPackageFingerprint() && packageFingerprint != pNode.getPackageFingerprint()) {
             throw new AconfigStorageException(
                     AconfigStorageException.ERROR_FILE_FINGERPRINT_MISMATCH,
-                    "package " + packageName + "fingerprint doesn't match the one on device");
+                    "package " + packageName + " fingerprint doesn't match the one on device");
         }
 
         return new PlatformAconfigPackageInternal(vList, pNode.getBooleanStartIndex());

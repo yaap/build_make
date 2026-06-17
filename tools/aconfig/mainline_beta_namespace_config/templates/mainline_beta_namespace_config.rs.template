@@ -1,0 +1,27 @@
+//! Automatically-generated Rust version of the Mainline Beta namespace config.
+
+use std::collections::HashMap;
+
+/// A single Mainline Beta namespace from the config.
+pub struct MainlineBetaNamespace<'a> \{
+    /// The name of the namespace's container.
+    pub container: &'a str,
+    /// Whether to allow exported flags.
+    pub allow_exported: bool,
+}
+
+/// All of the Mainline Beta namespaces from the config.
+static MAINLINE_BETA_NAMESPACE_MAP_ENTRIES: &[(&str, MainlineBetaNamespace)] = &[
+{{ -for entry in namespaces }}
+    ("{entry.0}", MainlineBetaNamespace \{ container: "{entry.1.container}", allow_exported: {entry.1.allow_exported} }),
+{{ -endfor }}
+];
+
+/// Creates a HashMap of the Mainline Beta namespaces, matching the original JSON structure.
+pub fn get_mainline_beta_namespace_map<'a>() -> HashMap<&'a str, &'a MainlineBetaNamespace<'a>> \{
+    let mut namespaces: HashMap<&'a str, _> = HashMap::new();
+    for (name, namespace) in MAINLINE_BETA_NAMESPACE_MAP_ENTRIES \{
+        namespaces.insert(name, namespace);
+    }
+    namespaces
+}

@@ -121,6 +121,7 @@ public class Main {
         DependencyProto.FileDependencyList dependencyList =  dp.buildDependencyMaps();
 
         // Write the proto to output file
+        // Use Utils.writeContentsToJson() to get a radable json view for debugging.
         Utils.writeContentsToProto(dependencyList, input.dependencyMapProto);
     }
 

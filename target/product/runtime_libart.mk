@@ -26,8 +26,10 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     ext \
 
+ifneq ($(RELEASE_DEPRECATE_RUNTIME_APEX),true)
 # Runtime (Bionic) APEX module.
 PRODUCT_PACKAGES += com.android.runtime
+endif
 
 # ART APEX module.
 #
@@ -56,7 +58,9 @@ endif
 ifeq (true,$(art_target_include_debug_build))
   PRODUCT_PACKAGES += com.android.art.debug
   apex_test_module := art-check-debug-apex-gen-fakebin
+  PRODUCT_VENDOR_PROPERTIES += persist.sys.dalvik.vm.lib.2=libartd.so
 else
+  PRODUCT_VENDOR_PROPERTIES += persist.sys.dalvik.vm.lib.2=libart.so
   PRODUCT_PACKAGES += com.android.art
   apex_test_module := art-check-release-apex-gen-fakebin
 endif

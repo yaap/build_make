@@ -1,0 +1,66 @@
+// Copyright 2025 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package android.soong.api;
+
+option java_multiple_files = true;
+option java_package = "com.android.soong.api.proto";
+option java_outer_classname = "SoongApiProto";
+
+// SoongApiService provides access to the build-time metadata collected by the Soong build system.
+// It allows querying information about modules, their types, and where they are installed.
+service SoongApiService {
+  // Returns a stream of all modules defined in the build system.
+  rpc GetAllModules(GetAllModulesRequest) returns (stream Module);
+
+  // Returns a stream of modules matching a specific name.
+  // A name might return multiple modules if they are defined in different source paths.
+  rpc GetModule(GetModuleRequest) returns (stream Module);
+
+  // Returns a stream of modules that contribute to a specific installation path.
+  // Useful for finding which module installed a particular file in the system image.
+  rpc GetModuleByInstallPath(GetModuleByInstallPathRequest) returns (stream Module);
+}
+
+// Request for GetAllModules. Currently empty but allows for future filtering options.
+message GetAllModulesRequest {}
+
+// Request for GetModule by its name.
+message GetModuleRequest {
+  // The name of the module (e.g., "libc", "Settings").
+  string name = 1;
+}
+
+// Request for GetModuleByInstallPath by its final location on the device.
+message GetModuleByInstallPathRequest {
+  // The absolute installation path (e.g., "/system/lib64/libc.so").
+  string install_path = 1;
+}
+
+// Module represents the basic metadata of a Soong module.
+message Module {
+  // The unique name of the module.
+  string name = 1;
+
+  // The type of the module (e.g., "cc_library", "java_library").
+  string type = 2;
+
+  // The relative path to the module's directory from the Android source root.
+  string path = 3;
+
+  // A list of files that this module installs to the system/data/vendor partitions.
+  repeated string install_files = 4;
+}

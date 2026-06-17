@@ -26,5 +26,11 @@
         <do-not-install-in user-type="android.os.usertype.profile.CLONE" />
         <do-not-install-in user-type="android.os.usertype.profile.PRIVATE" />
     </install-in-user-type>
+
+    <!-- IMS Service Entitlement (ImsServiceEntitlement) -->
+    <install-in-user-type package="com.android.imsserviceentitlement">
+        <install-in user-type="SYSTEM" />
+        <install-in user-type="FULL" />
+    </install-in-user-type>
 </config>
 

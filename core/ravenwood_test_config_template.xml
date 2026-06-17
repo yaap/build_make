@@ -24,6 +24,9 @@
     <option name="null-device" value="true" />
     <option name="do-not-swallow-runner-errors" value="true" />
 
+    <!-- Increase IsolationRunner's socket timeout to 10 minutes -->
+    <option name="socket-timeout" value="600000" />
+
     <option name="java-flags" value="-Dandroid.ravenwood.version=1"/>
 
     <option name="java-flags" value="--add-modules=jdk.compiler"/>

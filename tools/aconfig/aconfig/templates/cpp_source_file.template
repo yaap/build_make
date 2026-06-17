@@ -6,6 +6,7 @@
 #include <android/log.h>
 #define LOG_TAG "aconfig_cpp_codegen"
 #define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 {{ -endif }}
 
 {{ if is_test_mode }}
@@ -123,7 +124,8 @@ namespace {cpp_namespace} \{
                 {{ if use_package_fingerprint- }}
 
                 if (!fingerprint_matches_) \{
-                    ALOGE("error: package fingerprint mismtach, returning flag default value.");
+                    // TODO (b/480204891)
+                    // ALOGI("error: package fingerprint mismatch for package {package}, returning flag default value.");
                     return {item.default_value};
                 }
                 {{ -endif }}{#- end of use_package_fingerprint #}
@@ -238,7 +240,8 @@ namespace {cpp_namespace} \{
                 {{ if use_package_fingerprint- }}
 
                 if (!fingerprint_matches_) \{
-                    ALOGE("error: package fingerprint mismtach, returning flag default value.");
+                    // TODO (b/480204891)
+                    // ALOGI("error: package fingerprint mismatch for package {package}, returning flag default value.");
                     return {item.default_value};
                 }
                 {{ -endif }}{#- end of use_package_fingerprint #}

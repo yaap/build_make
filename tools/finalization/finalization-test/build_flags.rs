@@ -20,12 +20,14 @@ use std::collections::HashMap;
 use std::fs;
 
 #[allow(dead_code)]
-pub const FLAGS_WE_CARE_ABOUT: [&str; 5] = [
+pub const FLAGS_WE_CARE_ABOUT: [&str; 7] = [
+    "RELEASE_HIDDEN_API_EXPORTABLE_STUBS",
+    "RELEASE_PLATFORM_PREVIEW_SDK_INT",
+    "RELEASE_PLATFORM_PROSPECTIVE_SDK_VERSION_FULL",
     "RELEASE_PLATFORM_SDK_VERSION",
     "RELEASE_PLATFORM_SDK_VERSION_FULL",
     "RELEASE_PLATFORM_VERSION",
     "RELEASE_PLATFORM_VERSION_CODENAME",
-    "RELEASE_HIDDEN_API_EXPORTABLE_STUBS",
 ];
 
 // A map of release-config -name -> map of flag-name -> flag-value
@@ -73,6 +75,13 @@ fn parse_release_config(
     build_flag_map: &mut BuildFlagMap,
     aliases: &mut AliasMap,
 ) {
+    if release_config.disallow_lunch_use() {
+        // Ignore the release configs that you can't lunch. These are the 'userdebug', 'eng', etc
+        // release configs that run perpendicular to the usual product release configs, and the
+        // build flag rules we want to test do not apply.
+        return;
+    }
+
     let flags: HashMap<String, String> = release_config
         .flags
         .iter()

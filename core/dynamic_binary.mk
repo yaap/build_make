@@ -45,10 +45,35 @@ inject_module := $(linked_module)
 endif
 
 ###########################################################
+## Store a copy with symbols for symbolic debugging
+###########################################################
+ifeq ($(LOCAL_UNSTRIPPED_PATH),)
+my_unstripped_path := $(TARGET_OUT_UNSTRIPPED)/$(patsubst $(PRODUCT_OUT)/%,%,$(my_module_path))
+else
+my_unstripped_path := $(LOCAL_UNSTRIPPED_PATH)
+endif
+symbolic_input := $(inject_module)
+symbolic_output := $(my_unstripped_path)/$(my_installed_module_stem)
+elf_mapping_path := $(patsubst $(TARGET_OUT_UNSTRIPPED)/%,$(call intermediates-dir-for,PACKAGING,elf_symbol_mapping)/%,$(symbolic_output).textproto)
+
+ALL_MODULES.$(my_register_name).SYMBOLIC_OUTPUT_PATH := $(symbolic_output)
+ALL_MODULES.$(my_register_name).ELF_SYMBOL_MAPPING_PATH := $(elf_mapping_path)
+
+ifndef INSTALLED_SYMBOLS.$(symbolic_output)
+  INSTALLED_SYMBOLS.$(symbolic_output) := true
+  $(eval $(call copy-unstripped-elf-file-with-mapping,$(symbolic_input),$(symbolic_output),$(elf_mapping_path)))
+endif
+
+###########################################################
 ## Strip
 ###########################################################
 strip_input := $(inject_module)
 strip_output := $(LOCAL_BUILT_MODULE)
+
+# Use an order-only dependency to ensure the unstripped file in the symbols
+# directory is copied when the module is built, but does not force the
+# module to be rebuilt when the symbols directory is cleaned by installclean.
+$(strip_output): | $(symbolic_output)
 
 my_strip_module := $(firstword \
   $(LOCAL_STRIP_MODULE_$($(my_prefix)$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH)) \

@@ -1,0 +1,90 @@
+From 2af69e920ea86d24be385231b4229eb465bfa3a4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 19 Feb 2026 20:04:58 +0000
+Subject: [PATCH] C is 37
+
+It's not a fifty-four-year-old programming language; it's not an
+element common to all known life; it's the next Android release!
+
+Bug: 480974361
+Test: N/A
+Flag: NONE platform SDK finalization
+Change-Id: Icceb2c706284b104c33cbf460aacadc3d03ba49c
+---
+ core/api/current.txt            | 4 ++--
+ core/java/android/os/Build.java | 4 ++--
+ tools/aapt/SdkConstants.h       | 1 +
+ tools/aapt2/SdkConstants.h      | 1 +
+ 4 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/core/api/current.txt b/core/api/current.txt
+index 9d014ad9c61..4949e9ba838 100644
+--- a/core/api/current.txt
++++ b/core/api/current.txt
+@@ -34962,7 +34962,7 @@ package android.os {
+     field public static final int BAKLAVA = 36; // 0x24
+     field public static final int BASE = 1; // 0x1
+     field public static final int BASE_1_1 = 2; // 0x2
+-    field @FlaggedApi("android.sdk.version_codes_cinnamon_bun") public static final int CINNAMON_BUN = 10000; // 0x2710
++    field @FlaggedApi("android.sdk.version_codes_cinnamon_bun") public static final int CINNAMON_BUN = 37; // 0x25
+     field public static final int CUPCAKE = 3; // 0x3
+     field public static final int CUR_DEVELOPMENT = 10000; // 0x2710
+     field public static final int DONUT = 4; // 0x4
+@@ -35004,7 +35004,7 @@ package android.os {
+     field public static final int BAKLAVA_1 = 3600001; // 0x36ee81
+     field public static final int BASE = 100000; // 0x186a0
+     field public static final int BASE_1_1 = 200000; // 0x30d40
+-    field @FlaggedApi("android.sdk.version_codes_cinnamon_bun") public static final int CINNAMON_BUN = 1000000000; // 0x3b9aca00
++    field @FlaggedApi("android.sdk.version_codes_cinnamon_bun") public static final int CINNAMON_BUN = 3700000; // 0x387520
+     field public static final int CUPCAKE = 300000; // 0x493e0
+     field public static final int DONUT = 400000; // 0x61a80
+     field public static final int ECLAIR = 500000; // 0x7a120
+diff --git a/core/java/android/os/Build.java b/core/java/android/os/Build.java
+index 826d0906cd0..ed19d8290eb 100644
+--- a/core/java/android/os/Build.java
++++ b/core/java/android/os/Build.java
+@@ -1315,7 +1315,7 @@ public class Build {
+          * Cinnamon Bun.
+          */
+         @FlaggedApi(android.sdk.Flags.FLAG_VERSION_CODES_CINNAMON_BUN)
+-        public static final int CINNAMON_BUN = CUR_DEVELOPMENT;
++        public static final int CINNAMON_BUN = 37;
+     }
+ 
+     /** @hide */
+@@ -1542,7 +1542,7 @@ public class Build {
+          * Android 17.
+          */
+         @FlaggedApi(android.sdk.Flags.FLAG_VERSION_CODES_CINNAMON_BUN)
+-        public static final int CINNAMON_BUN = CUR_DEVELOPMENT;
++        public static final int CINNAMON_BUN = VERSION_CODES.CINNAMON_BUN * SDK_INT_MULTIPLIER;
+     }
+ 
+     /**
+diff --git a/tools/aapt/SdkConstants.h b/tools/aapt/SdkConstants.h
+index af6063c3782..06022b31601 100644
+--- a/tools/aapt/SdkConstants.h
++++ b/tools/aapt/SdkConstants.h
+@@ -52,6 +52,7 @@ enum {
+     SDK_UPSIDE_DOWN_CAKE = 34,
+     SDK_VANILLA_ICE_CREAM = 35,
+     SDK_BAKLAVA = 36,
++    SDK_CINNAMON_BUN = 37,
+     SDK_CUR_DEVELOPMENT = 10000,
+ };
+ 
+diff --git a/tools/aapt2/SdkConstants.h b/tools/aapt2/SdkConstants.h
+index 2a93c177e2c..d5aea15c002 100644
+--- a/tools/aapt2/SdkConstants.h
++++ b/tools/aapt2/SdkConstants.h
+@@ -62,6 +62,7 @@ enum : ApiVersion {
+   SDK_UPSIDE_DOWN_CAKE = 34,
+   SDK_VANILLA_ICE_CREAM = 35,
+   SDK_BAKLAVA = 36,
++  SDK_CINNAMON_BUN = 37,
+   SDK_CUR_DEVELOPMENT = 10000,
+ };
+ 
+-- 
+2.53.0.345.g96ddfc5eaa-goog
+

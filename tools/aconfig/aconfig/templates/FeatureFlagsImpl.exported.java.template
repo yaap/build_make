@@ -13,7 +13,7 @@ import android.util.Log;
 {{ -else }}
 /** @hide */
 {{ -endif }}
-public final class FeatureFlagsImpl implements FeatureFlags \{
+{{ if preserve_impl_interface }}public {{ endif }}final class FeatureFlagsImpl implements FeatureFlags \{
     private static final String TAG = "FeatureFlagsImplExport";
     private static volatile boolean isCached = false;
 {{ for flag in flag_elements }}
@@ -41,7 +41,7 @@ public final class FeatureFlagsImpl implements FeatureFlags \{
         }
         isCached = true;
     }
-{{ -for flag in flag_elements }}
+{{ for flag in overridable_flag_elements }}
     @Override
     public boolean {flag.method_name}() \{
         if (!isCached) \{
@@ -49,5 +49,5 @@ public final class FeatureFlagsImpl implements FeatureFlags \{
         }
         return {flag.method_name};
     }
-{{ endfor }} {#- end flag_elements #}
+{{ endfor- }} {#- end overridable_flag_elements #}
 }

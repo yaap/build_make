@@ -42,6 +42,7 @@ python_defaults {
     required: [
         "care_map_generator",
         "mkbootimg",
+        "mkf2fsuserimg",
     ],
 }
 

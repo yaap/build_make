@@ -45,7 +45,7 @@ func (tfs *TestFS) Stat(name string) (fs.FileInfo, error) {
 	if !strings.HasSuffix(dirname, "/") {
 		dirname = dirname + "/"
 	}
-	for name := range (*tfs) {
+	for name := range *tfs {
 		if strings.HasPrefix(name, dirname) {
 			return &TestFileInfo{name, 8, fs.ModeDir | fs.ModePerm}, nil
 		}

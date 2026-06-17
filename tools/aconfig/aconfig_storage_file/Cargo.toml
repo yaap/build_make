@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["cargo"]
+default = ["cargo", "test_utils"]
 cargo = []
 test_utils = []
 
 [dependencies]
-anyhow = "1.0.69"
+anyhow = { path = "../../../../../external/rust/android-crates-io/crates/anyhow" }
 protobuf = "3.2.0"
 tempfile = "3.9.0"
 thiserror = "1.0.56"
-clap = { version = "4.1.8", features = ["derive"] }
+clap = { path = "../../../../../external/rust/android-crates-io/crates/clap", features = ["derive"] }
 cxx = "1.0"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.93"
@@ -25,3 +25,9 @@ path = "src/main.rs"
 [build-dependencies]
 protobuf-codegen = "3.2.0"
 cxx-build = "1.0"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    "cfg(enable_parse_v4)",
+]

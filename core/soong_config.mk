@@ -28,13 +28,15 @@ $(call add_json_str,  BuildId,                           $(BUILD_ID))
 $(call add_json_str,  BuildFingerprintFile,              build_fingerprint-$(TARGET_PRODUCT).txt)
 $(call add_json_str,  BuildNumberFile,                   build_number.txt)
 $(call add_json_str,  BuildHostnameFile,                 build_hostname.txt)
+$(call add_json_str,  BuildSystemFingerprintFile,        build_system_fingerprint-$(TARGET_PRODUCT).txt)
 $(call add_json_str,  BuildThumbprintFile,               build_thumbprint-$(TARGET_PRODUCT).txt)
 $(call add_json_bool, DisplayBuildNumber,                $(filter true,$(DISPLAY_BUILD_NUMBER)))
 
 $(call add_json_str,  Platform_display_version_name,     $(PLATFORM_DISPLAY_VERSION))
 $(call add_json_str,  Platform_version_name,             $(PLATFORM_VERSION))
 $(call add_json_val,  Platform_sdk_version,              $(PLATFORM_SDK_VERSION))
-$(call add_json_val,  Platform_sdk_version_full,         $(PLATFORM_SDK_VERSION_FULL))
+$(call add_json_str,  Platform_sdk_version_full,         $(PLATFORM_SDK_VERSION_FULL))
+$(call add_json_val,  Platform_prospective_sdk_version_full, $(PLATFORM_PROSPECTIVE_SDK_VERSION_FULL))
 $(call add_json_str,  Platform_sdk_codename,             $(PLATFORM_VERSION_CODENAME))
 $(call add_json_bool, Platform_sdk_final,                $(filter REL,$(PLATFORM_VERSION_CODENAME)))
 $(call add_json_val,  Platform_sdk_extension_version,    $(PLATFORM_SDK_EXTENSION_VERSION))
@@ -111,6 +113,7 @@ $(call add_json_list, ExtraOtaKeys,                      $(PRODUCT_EXTRA_OTA_KEY
 $(call add_json_list, ExtraOtaRecoveryKeys,              $(PRODUCT_EXTRA_RECOVERY_KEYS))
 $(call add_json_str,  MainlineSepolicyDevCertificates,   $(MAINLINE_SEPOLICY_DEV_CERTIFICATES))
 $(call add_json_str,  MainlineBluetoothSepolicyDevCertificates,   $(MAINLINE_BLUETOOTH_SEPOLICY_DEV_CERTIFICATES))
+$(call add_json_str,  MainlineNfcSepolicyDevCertificates,   $(MAINLINE_NFC_SEPOLICY_DEV_CERTIFICATES))
 
 $(call add_json_str,  AppsDefaultVersionName,            $(APPS_DEFAULT_VERSION_NAME))
 
@@ -123,6 +126,12 @@ $(call add_json_bool, Safestack,                         $(filter true,$(USE_SAF
 $(call add_json_bool, EnableCFI,                         $(call invert_bool,$(filter false,$(ENABLE_CFI))))
 $(call add_json_list, CFIExcludePaths,                   $(CFI_EXCLUDE_PATHS) $(PRODUCT_CFI_EXCLUDE_PATHS))
 $(call add_json_list, CFIIncludePaths,                   $(CFI_INCLUDE_PATHS) $(PRODUCT_CFI_INCLUDE_PATHS))
+
+ifdef ENABLE_XOM
+$(call add_json_bool, EnableXOM,                         $(filter true,$(ENABLE_XOM)))
+endif
+
+$(call add_json_list, XOMExcludePaths,                   $(XOM_EXCLUDE_PATHS) $(PRODUCT_XOM_EXCLUDE_PATHS))
 $(call add_json_list, IntegerOverflowExcludePaths,       $(INTEGER_OVERFLOW_EXCLUDE_PATHS) $(PRODUCT_INTEGER_OVERFLOW_EXCLUDE_PATHS))
 $(call add_json_list, HWASanIncludePaths,                $(HWASAN_INCLUDE_PATHS) $(PRODUCT_HWASAN_INCLUDE_PATHS))
 $(call add_json_list, HWASanExcludePaths,                $(HWASAN_EXCLUDE_PATHS) $(PRODUCT_HWASAN_EXCLUDE_PATHS))
@@ -155,6 +164,7 @@ $(call add_json_list, ExtraVndkVersions,                 $(PRODUCT_EXTRA_VNDK_VE
 $(call add_json_list, DeviceSystemSdkVersions,           $(BOARD_SYSTEMSDK_VERSIONS))
 $(call add_json_list, Platform_systemsdk_versions,       $(PLATFORM_SYSTEMSDK_VERSIONS))
 $(call add_json_bool, Malloc_low_memory,                 $(findstring true,$(MALLOC_SVELTE) $(MALLOC_LOW_MEMORY)))
+$(call add_json_bool, Malloc_scudo_tsds_max,             $(MALLOC_SCUDO_TSDS_MAX))
 $(call add_json_bool, Malloc_zero_contents,              $(call invert_bool,$(filter false,$(MALLOC_ZERO_CONTENTS))))
 $(call add_json_bool, Malloc_pattern_fill_contents,      $(MALLOC_PATTERN_FILL_CONTENTS))
 $(call add_json_str,  Override_rs_driver,                $(OVERRIDE_RS_DRIVER))
@@ -177,11 +187,6 @@ $(foreach flag,$(_ALL_RELEASE_FLAGS),\
   $(call add_json_str,$(flag),$(_ALL_RELEASE_FLAGS.$(flag).TYPE)))
 $(call end_json_map)
 
-$(call add_json_bool, MultitreeUpdateMeta,               $(filter true,$(TARGET_MULTITREE_UPDATE_META)))
-
-$(call add_json_bool, Treble_linker_namespaces,          $(filter true,$(PRODUCT_TREBLE_LINKER_NAMESPACES)))
-$(call add_json_bool, Enforce_vintf_manifest,            $(filter true,$(PRODUCT_ENFORCE_VINTF_MANIFEST)))
-
 $(call add_json_bool, Uml,                               $(filter true,$(TARGET_USER_MODE_LINUX)))
 $(call add_json_str,  VendorPath,                        $(TARGET_COPY_OUT_VENDOR))
 $(call add_json_str,  VendorDlkmPath,                    $(TARGET_COPY_OUT_VENDOR_DLKM))
@@ -202,9 +207,6 @@ $(call add_json_bool, BuildingUserdataImage,             $(BUILDING_USERDATA_IMA
 
 $(call add_json_bool, UseRBE,                            $(filter-out false,$(USE_RBE)))
 $(call add_json_bool, UseREWrapper,                      $(filter-out false,$(USE_REWRAPPER)))
-$(call add_json_bool, UseRBEJAVAC,                       $(filter-out false,$(RBE_JAVAC)))
-$(call add_json_bool, UseRBER8,                          $(filter-out false,$(RBE_R8)))
-$(call add_json_bool, UseRBED8,                          $(filter-out false,$(RBE_D8)))
 $(call add_json_bool, Arc,                               $(filter true,$(TARGET_ARC)))
 
 $(call add_json_list, NamespacesToExport,                $(PRODUCT_SOONG_NAMESPACES))
@@ -280,6 +282,11 @@ $(call add_json_str,  DeviceCurrentApiLevelForVendorModules,  $(BOARD_CURRENT_AP
 
 $(call add_json_bool, CompressedApex, $(filter true,$(PRODUCT_COMPRESSED_APEX)))
 $(call add_json_str, DefaultApexPayloadType, $(PRODUCT_DEFAULT_APEX_PAYLOAD_TYPE))
+$(call add_json_str, DefaultApexPayloadErofsCompressor, $(PRODUCT_DEFAULT_APEX_PAYLOAD_EROFS_COMPRESSOR))
+$(call add_json_str, DefaultApexPayloadErofsCompressHints, $(PRODUCT_DEFAULT_APEX_PAYLOAD_EROFS_COMPRESS_HINTS))
+ifdef PRODUCT_DEFAULT_APEX_PAYLOAD_EROFS_PCLUSTER_SIZE
+  $(call add_json_val, DefaultApexPayloadErofsPclusterSize, $(PRODUCT_DEFAULT_APEX_PAYLOAD_EROFS_PCLUSTER_SIZE))
+endif
 
 $(call add_json_bool, BoardUsesRecoveryAsBoot, $(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)))
 
@@ -381,13 +388,14 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
   $(call add_json_str,  ProductDirectory,    $(dir $(INTERNAL_PRODUCT)))
 
   $(call add_json_map,PartitionQualifiedVariables)
-  $(foreach image_type,INIT_BOOT BOOT VENDOR_BOOT VENDOR_KERNEL_BOOT SYSTEM VENDOR CACHE USERDATA PRODUCT SYSTEM_EXT OEM ODM VENDOR_DLKM ODM_DLKM SYSTEM_DLKM VBMETA VBMETA_SYSTEM VBMETA_VENDOR VBMETA_SYSTEM_DLKM VBMETA_VENDOR_DLKM, \
+  $(foreach image_type,INIT_BOOT BOOT VENDOR_BOOT VENDOR_KERNEL_BOOT SYSTEM VENDOR CACHE USERDATA PRODUCT SYSTEM_EXT OEM ODM VENDOR_DLKM ODM_DLKM SYSTEM_DLKM VBMETA VBMETA_SYSTEM VBMETA_VENDOR VBMETA_SYSTEM_DLKM VBMETA_VENDOR_DLKM $(BOARD_CUSTOMIMAGES_PARTITION_LIST), \
     $(call add_json_map,$(call to-lower,$(image_type))) \
     $(call add_json_bool, BuildingImage, $(filter true,$(BUILDING_$(image_type)_IMAGE))) \
     $(call add_json_bool, PrebuiltImage, $(filter true,$(BOARD_PREBUILT_$(image_type)IMAGE))) \
     $(call add_json_str, BoardErofsCompressor, $(BOARD_$(image_type)IMAGE_EROFS_COMPRESSOR)) \
     $(call add_json_str, BoardErofsCompressHints, $(BOARD_$(image_type)IMAGE_EROFS_COMPRESS_HINTS)) \
     $(call add_json_str, BoardErofsPclusterSize, $(BOARD_$(image_type)IMAGE_EROFS_PCLUSTER_SIZE)) \
+    $(call add_json_str, BoardErofsEnableDedupe, $(BOARD_$(image_type)IMAGE_EROFS_ENABLE_DEDUPE)) \
     $(call add_json_str, BoardErofsBlockSize, $(BOARD_$(image_type)IMAGE_EROFS_BLOCKSIZE)) \
     $(call add_json_str, BoardExtfsInodeCount, $(BOARD_$(image_type)IMAGE_EXTFS_INODE_COUNT)) \
     $(call add_json_str, BoardExtfsRsvPct, $(BOARD_$(image_type)IMAGE_EXTFS_RSV_PCT)) \
@@ -397,10 +405,6 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
     $(call add_json_str, BoardJournalSize, $(BOARD_$(image_type)IMAGE_JOURNAL_SIZE)) \
     $(call add_json_str, BoardPartitionReservedSize, $(BOARD_$(image_type)IMAGE_PARTITION_RESERVED_SIZE)) \
     $(call add_json_str, BoardPartitionSize, $(BOARD_$(image_type)IMAGE_PARTITION_SIZE)) \
-    $(call add_json_str, BoardSquashfsBlockSize, $(BOARD_$(image_type)IMAGE_SQUASHFS_BLOCK_SIZE)) \
-    $(call add_json_str, BoardSquashfsCompressor, $(BOARD_$(image_type)IMAGE_SQUASHFS_COMPRESSOR)) \
-    $(call add_json_str, BoardSquashfsCompressorOpt, $(BOARD_$(image_type)IMAGE_SQUASHFS_COMPRESSOR_OPT)) \
-    $(call add_json_str, BoardSquashfsDisable4kAlign, $(BOARD_$(image_type)IMAGE_SQUASHFS_DISABLE_4K_ALIGN)) \
     $(call add_json_str, BoardAvbKeyPath, $(BOARD_AVB_$(image_type)_KEY_PATH)) \
     $(call add_json_str, BoardAvbAlgorithm, $(BOARD_AVB_$(image_type)_ALGORITHM)) \
     $(call add_json_str, BoardAvbRollbackIndex, $(BOARD_AVB_$(image_type)_ROLLBACK_INDEX)) \
@@ -419,7 +423,6 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
 
   $(call add_json_bool, TargetUserimagesSparseExtDisabled, $(filter true,$(TARGET_USERIMAGES_SPARSE_EXT_DISABLED)))
   $(call add_json_bool, TargetUserimagesSparseErofsDisabled, $(filter true,$(TARGET_USERIMAGES_SPARSE_EROFS_DISABLED)))
-  $(call add_json_bool, TargetUserimagesSparseSquashfsDisabled, $(filter true,$(TARGET_USERIMAGES_SPARSE_SQUASHFS_DISABLED)))
   $(call add_json_bool, TargetUserimagesSparseF2fsDisabled, $(filter true,$(TARGET_USERIMAGES_SPARSE_F2FS_DISABLED)))
 
   $(call add_json_str, BoardErofsCompressor, $(BOARD_EROFS_COMPRESSOR))
@@ -428,6 +431,7 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
   $(call add_json_str, BoardErofsBlockSize, $(BOARD_EROFS_BLOCKSIZE))
   $(call add_json_str, BoardErofsShareDupBlocks, $(BOARD_EROFS_SHARE_DUP_BLOCKS))
   $(call add_json_str, BoardErofsUseLegacyCompression, $(BOARD_EROFS_USE_LEGACY_COMPRESSION))
+  $(call add_json_str, BoardErofsEnableDedupe, $(BOARD_EROFS_ENABLE_DEDUPE))
   $(call add_json_str, BoardExt4ShareDupBlocks, $(BOARD_EXT4_SHARE_DUP_BLOCKS))
   $(call add_json_str, BoardFlashLogicalBlockSize, $(BOARD_FLASH_LOGICAL_BLOCK_SIZE))
   $(call add_json_str, BoardFlashEraseBlockSize, $(BOARD_FLASH_ERASE_BLOCK_SIZE))
@@ -439,7 +443,6 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
   $(call add_json_str, ProductBuildVendorBootImage, $(PRODUCT_BUILD_VENDOR_BOOT_IMAGE))
   $(call add_json_bool, ProductBuildInitBootImage, $(filter true,$(PRODUCT_BUILD_INIT_BOOT_IMAGE)))
   $(call add_json_bool, BoardUsesRecoveryAsBoot, $(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)))
-  $(call add_json_str, BoardPrebuiltBootimage, $(BOARD_PREBUILT_BOOT_IMAGE))
   $(call add_json_str, BoardPrebuiltInitBootimage, $(BOARD_PREBUILT_INIT_BOOT_IMAGE))
   $(call add_json_str, BoardBootimagePartitionSize, $(BOARD_BOOTIMAGE_PARTITION_SIZE))
   $(call add_json_str, BoardVendorBootimagePartitionSize, $(BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE))
@@ -569,6 +572,10 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
   $(call add_json_list, ProductLinkerConfigSrcs, $(PRODUCT_PRODUCT_LINKER_CONFIG_FRAGMENTS))
 
   # Used to generate _dlkm partitions
+  $(call add_json_str, BoardKernelModulesZip, $(BOARD_KERNEL_MODULES_ZIP))
+  $(call add_json_list, BoardKernelModulesZipExtraVendorKernelRamdiskLoads, $(BOARD_KERNEL_MODULES_ZIP_EXTRA_VENDOR_KERNEL_RAMDISK_LOADS))
+  $(call add_json_list, BoardKernelModulesZipExtraVendorKernelModules, $(BOARD_KERNEL_MODULES_ZIP_EXTRA_VENDOR_KERNEL_MODULES))
+  $(call add_json_list, BoardKernelModulesZipExtraBlocked16kModules, $(BOARD_KERNEL_MODULES_ZIP_EXTRA_BLOCKED_16K_MODULES))
   $(call add_json_bool, BuildingSystemDlkmImage,               $(BUILDING_SYSTEM_DLKM_IMAGE))
   $(call add_json_list, SystemKernelModules, $(BOARD_SYSTEM_KERNEL_MODULES))
   $(call add_json_str, SystemKernelBlocklistFile, $(BOARD_SYSTEM_KERNEL_MODULES_BLOCKLIST_FILE))
@@ -652,6 +659,7 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
     $(call add_json_str, max_brightness_file, $(TARGET_RECOVERY_UI_MAX_BRIGHTNESS_FILE))
     $(call add_json_str, brightness_normal_percent, $(TARGET_RECOVERY_UI_BRIGHTNESS_NORMAL))
     $(call add_json_str, brightness_dimmed_percent, $(TARGET_RECOVERY_UI_BRIGHTNESS_DIMMED))
+    $(call add_json_int, graphics_timeout_ms, $(TARGET_RECOVERY_UI_GRAPHICS_TIMEOUT_MS))
   $(call end_json_map)
 
   $(call add_json_str, PrebuiltBootloader, $(BOARD_PREBUILT_BOOTLOADER))
@@ -660,6 +668,8 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
   $(call add_json_str, ProductFsCasefold, $(PRODUCT_FS_CASEFOLD))
   $(call add_json_str, ProductQuotaProjid, $(PRODUCT_QUOTA_PROJID))
   $(call add_json_str, ProductFsCompression, $(PRODUCT_FS_COMPRESSION))
+  $(call add_json_str, BoardF2fsBlockSize, $(BOARD_F2FS_BLOCKSIZE))
+  $(call add_json_str, BoardF2fsPackedSsa, $(BOARD_F2FS_PACKED_SSA))
 
   $(call add_json_str, ReleaseToolsExtensionDir, $(firstword $(TARGET_RELEASETOOLS_EXTENSIONS) $($(TARGET_DEVICE_DIR)/../common)))
 
@@ -675,6 +685,18 @@ $(call add_json_map, PartitionVarsForSoongMigrationOnlyDoNotUse)
   $(call add_json_str, VendorBlobsLicense, $(VENDOR_BLOBS_LICENSE))
 
   $(call add_json_bool, MinimalFontFootprint, $(filter true,$(MINIMAL_FONT_FOOTPRINT)))
+
+  $(call add_json_list, CustomImagesPartitions, $(BOARD_CUSTOMIMAGES_PARTITION_LIST))
+
+  # For vendor_module_check
+  $(call add_json_str, ProductRestrictVendorFiles, $(PRODUCT_RESTRICT_VENDOR_FILES))
+  $(call add_json_str, VendorProductRestrictVendorFiles, $(VENDOR_PRODUCT_RESTRICT_VENDOR_FILES))
+  $(call add_json_list, VendorExceptionPaths, $(VENDOR_EXCEPTION_PATHS))
+  $(call add_json_list, VendorExceptionModules, $(VENDOR_EXCEPTION_MODULES))
+
+  # Used to create dist rules defined in product config.
+  $(call add_json_list, AllDistGoalOutputPairs, $(_all_dist_goal_output_pairs))
+  $(call add_json_list, AllDistSrcDstPairs, $(_all_dist_src_dst_pairs))
 
 $(call end_json_map)
 
@@ -717,6 +739,8 @@ $(call add_json_bool, EnforceSELinuxTrebleLabeling, $(filter true,$(PRODUCT_ENFO
 $(call add_json_str, SELinuxTrebleLabelingTrackingListFile, $(PRODUCT_SELINUX_TREBLE_LABELING_TRACKING_LIST_FILE))
 
 $(call add_json_bool, BuildOTAPackage, $(call invert_bool,$(filter true,$(TARGET_SKIP_OTA_PACKAGE))))
+
+$(call add_json_bool, RestrictsAshmemUsage, $(filter true,$(TARGET_RESTRICTS_ASHMEM_USAGE)))
 
 $(call json_end)
 

@@ -39,6 +39,24 @@ message EditEvent {
     ErrorType error_type = 1;
   }
 
+  // Event that logs resource usage of the daemon.
+  message MetricsEvent {
+    // P50 CPU usage percentage over the time window.
+    double cpu_usage_p50 = 1;
+    // P95 CPU usage percentage (e.g. 150.0 means 1.5 cores) over the time window.
+    double cpu_usage_p95 = 2;
+    // Max CPU usage percentage over the time window.
+    double cpu_usage_max = 3;
+    // P50 Memory usage in bytes over the time window.
+    double memory_usage_p50 = 4;
+    // P95 Memory usage in bytes over the time window.
+    double memory_usage_p95 = 5;
+    // Max Memory usage in bytes over the time window.
+    double memory_usage_max = 6;
+    // Window size of the aggregation.
+    double time_window_seconds = 7;
+  }
+
   // ------------------------
   // FIELDS FOR EditEvent
   // ------------------------
@@ -48,10 +66,15 @@ message EditEvent {
   string source_root = 2;
   // Name of the host workstation.
   string host_name = 3;
+  // The name of the repository that is being monitored.
+  // This is used to distinguish between different repositories,
+  // e.g. "android" or "chrome".
+  string target_repo = 7;
 
   oneof event {
     SingleEditEvent single_edit_event = 4;
     AggregatedEditEvent aggregated_edit_event = 5;
     EditMonitorErrorEvent edit_monitor_error_event = 6;
+    MetricsEvent metrics_event = 8;
   }
 }

@@ -224,9 +224,23 @@ class APK(object):
     # Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: 56be132b780656fe2444cd34326eb5d7aac91d2096abf0fe673a99270622ec87
     # Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-1 digest: 19da94896ce4078c38ca695701f1dec741ec6d67
     # ...
+    #
+    # Alternate sample output:
+    # V3.1 Signer: (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: 56be132b780656fe2444cd34326eb5d7aac91d2096abf0fe673a99270622ec87
+    # V3.0 Signer: (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: 56be132b780656fe2444cd34326eb5d7aac91d2096abf0fe673a99270622ec87
+    #
+    # V2 Signer: certificate DN: ...
+    # V2 Signer: certificate SHA-256 digest: 9562a75bb27ff9e87d0d3ae6138e566e7bc722901687d46fe7e5afec337682bc
+    # V2 Signer: certificate SHA-1 digest: 62af84418a2cab082846725b4ae9c9b627191a1b
+    # V2 Signer: certificate MD5 digest: 9badeac22f14b1eee526f2599050cdb0
+
+    #
+    # ...
     certs_info = {}
     certificate_regex = re.compile(
-        r"(Signer (?:#[0-9]+|\(.*\))) (certificate .*):(.*)")
+        r"((?:V[0-9]+(?:\.\d+)? )?Signer:?(?: #[0-9]+| \(.*\)|.*)) (certificate"
+        r" .*):(.*)"
+    )
     for line in output.splitlines():
       m = certificate_regex.match(line)
       if not m:

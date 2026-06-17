@@ -1,0 +1,12 @@
+package com.android.aconfig.test;
+
+/** @hide */
+public interface FeatureFlags {
+
+    boolean disabledRwExported();
+
+    boolean enabledFixedRoExported();
+
+    boolean enabledRoExported();
+
+}

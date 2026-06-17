@@ -1,0 +1,111 @@
+From 769356bbb6fd40d92802ebad44d3a3acfb17a4d3 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <amhk@google.com>
+Date: Thu, 19 Feb 2026 20:05:00 +0000
+Subject: [PATCH 2/3] SdkExtensions: introduce C extension
+
+Note: no new modules opted in to SDK extensions as part of C.
+
+Bug: 480974361
+Test: atest CtsSdkExtensionsTestCases
+Flag: NONE platform SDK finalization
+Change-Id: Ibdffd1b090919347d583b356c3f807648c31a940
+---
+ java/android/os/ext/SdkExtensions.java              |  9 +++++++++
+ javatests/com/android/os/ext/SdkExtensionsTest.java | 12 +++++++++++-
+ 2 files changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/java/android/os/ext/SdkExtensions.java b/java/android/os/ext/SdkExtensions.java
+index 681ce9b4e10..bef6b6e9eb6 100644
+--- a/java/android/os/ext/SdkExtensions.java
++++ b/java/android/os/ext/SdkExtensions.java
+@@ -49,6 +49,7 @@ public class SdkExtensions {
+     private static final int U_EXTENSION_INT;
+     private static final int V_EXTENSION_INT;
+     private static final int B_EXTENSION_INT;
++    private static final int C_EXTENSION_INT;
+     private static final int AD_SERVICES_EXTENSION_INT;
+     private static final Map<Integer, Integer> ALL_EXTENSION_INTS;
+ 
+@@ -59,6 +60,7 @@ public class SdkExtensions {
+         U_EXTENSION_INT = SystemProperties.getInt("build.version.extensions.u", 0);
+         V_EXTENSION_INT = SystemProperties.getInt("build.version.extensions.v", 0);
+         B_EXTENSION_INT = SystemProperties.getInt("build.version.extensions.b", 0);
++        C_EXTENSION_INT = SystemProperties.getInt("build.version.extensions.c", 0);
+         AD_SERVICES_EXTENSION_INT =
+                 SystemProperties.getInt("build.version.extensions.ad_services", 0);
+         Map<Integer, Integer> extensions = new HashMap<Integer, Integer>();
+@@ -79,6 +81,9 @@ public class SdkExtensions {
+         if (SdkLevel.isAtLeastB()) {
+             extensions.put(VERSION_CODES.BAKLAVA, B_EXTENSION_INT);
+         }
++        if (SdkLevel.isAtLeastC()) {
++            extensions.put(VERSION_CODES.CINNAMON_BUN, C_EXTENSION_INT);
++        }
+         ALL_EXTENSION_INTS = Collections.unmodifiableMap(extensions);
+     }
+ 
+@@ -95,6 +100,7 @@ public class SdkExtensions {
+                 VERSION_CODES.UPSIDE_DOWN_CAKE,
+                 VERSION_CODES.VANILLA_ICE_CREAM,
+                 VERSION_CODES.BAKLAVA,
++                VERSION_CODES.CINNAMON_BUN,
+                 AD_SERVICES,
+             })
+     @Retention(RetentionPolicy.SOURCE)
+@@ -140,6 +146,9 @@ public class SdkExtensions {
+         if (extension == VERSION_CODES.BAKLAVA) {
+             return B_EXTENSION_INT;
+         }
++        if (extension == VERSION_CODES.CINNAMON_BUN) {
++            return C_EXTENSION_INT;
++        }
+         if (extension == AD_SERVICES) {
+             return AD_SERVICES_EXTENSION_INT;
+         }
+diff --git a/javatests/com/android/os/ext/SdkExtensionsTest.java b/javatests/com/android/os/ext/SdkExtensionsTest.java
+index 9847f5327ff..85ae7a5d497 100644
+--- a/javatests/com/android/os/ext/SdkExtensionsTest.java
++++ b/javatests/com/android/os/ext/SdkExtensionsTest.java
+@@ -18,6 +18,7 @@ package com.android.os.ext;
+ 
+ import static android.os.Build.VERSION_CODES;
+ import static android.os.Build.VERSION_CODES.BAKLAVA;
++import static android.os.Build.VERSION_CODES.CINNAMON_BUN;
+ import static android.os.Build.VERSION_CODES.R;
+ import static android.os.Build.VERSION_CODES.S;
+ import static android.os.Build.VERSION_CODES.TIRAMISU;
+@@ -191,7 +192,7 @@ public class SdkExtensionsTest {
+     @Test
+     public void testZeroValues() throws Exception {
+         Set<Integer> assignedCodes =
+-                Set.of(R, S, TIRAMISU, UPSIDE_DOWN_CAKE, VANILLA_ICE_CREAM, BAKLAVA, AD_SERVICES);
++                Set.of(R, S, TIRAMISU, UPSIDE_DOWN_CAKE, VANILLA_ICE_CREAM, BAKLAVA, CINNAMON_BUN, AD_SERVICES);
+         for (int sdk = VERSION_CODES.R; sdk <= 1_000_000; sdk++) {
+             if (assignedCodes.contains(sdk)) {
+                 continue;
+@@ -224,6 +225,9 @@ public class SdkExtensionsTest {
+         if (SdkLevel.isAtLeastB()) {
+             expectedKeys.add(BAKLAVA);
+         }
++        if (SdkLevel.isAtLeastC()) {
++            expectedKeys.add(CINNAMON_BUN);
++        }
+         Set<Integer> actualKeys = SdkExtensions.getAllExtensionVersions().keySet();
+         assertWithHeader().that(actualKeys).containsExactlyElementsIn(expectedKeys);
+     }
+@@ -264,6 +268,12 @@ public class SdkExtensionsTest {
+         assertVersion(expectation, BAKLAVA, "b");
+     }
+ 
++    @Test
++    public void testExtensionC() throws Exception {
++        Expectation expectation = dessertExpectation(SdkLevel.isAtLeastC());
++        assertVersion(expectation, CINNAMON_BUN, "c");
++    }
++
+     @Test
+     public void testExtensionAdServices() throws Exception {
+         int adServicesVersion = SdkExtensions.getExtensionVersion(AD_SERVICES);
+-- 
+2.53.0.345.g96ddfc5eaa-goog
+
